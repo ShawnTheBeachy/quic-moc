@@ -129,6 +129,27 @@ public sealed class MethodMockTests
         await Assert.That(value2).IsEqualTo("foo");
         await Assert.That(value3).IsEqualTo("foo");
     }
+
+    [Test]
+    public async Task OutParameter_ShouldBeSet_WhenReturnValueSetsIt()
+    {
+        // Arrange.
+        var mock = new Mock<IMethodMockTests>().Quick();
+        mock.Greet(Arg<string>.Any(), Arg<string>.Any())
+            .Returns(
+                (string _, out string g) =>
+                {
+                    g = "foo";
+                }
+            );
+
+        // Act.
+        IMethodMockTests sut = mock;
+        sut.Greet("foo", out var greeting);
+
+        // Assert.
+        await Assert.That(greeting).IsEqualTo("foo");
+    }
 }
 
 internal interface IMethodMockTests

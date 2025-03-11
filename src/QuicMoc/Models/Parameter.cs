@@ -9,6 +9,7 @@ internal sealed record Parameter
 {
     public string? DefaultValue { get; }
     public bool IsNullable { get; }
+    public bool IsOut => RefKind == RefKind.Out;
     public string Name { get; }
     public RefKind RefKind { get; }
     public ITypeSymbol Type { get; }
@@ -52,7 +53,7 @@ internal static class ParameterExtensions
         string.Join(", ", parameters.Select(x => $"{x.Ref()} {x.Name}{suffix}"));
 
     public static string Discards(this IEnumerable<Parameter> parameters) =>
-        string.Join(", ", parameters.Select(_ => '_'));
+        string.Join(", ", parameters.Select(x => $"{x.Ref()} {x.Type.Name} _"));
 
     public static string Parameters(
         this IEnumerable<Parameter> parameters,

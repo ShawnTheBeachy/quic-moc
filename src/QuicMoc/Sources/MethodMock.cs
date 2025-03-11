@@ -1,14 +1,16 @@
+using System.Collections.Generic;
 using System.Linq;
+using Microsoft.CodeAnalysis;
 using QuicMoc.Models;
 
 namespace QuicMoc.Sources;
 
 internal static class MethodMock
 {
-    private static string Delegates(string returnType, string parameters) =>
+    private static string Delegates(string returnType, IReadOnlyList<Parameter> parameters) =>
         $"""
-            public delegate bool Matcher({parameters});
-            public delegate {returnType} Signature({parameters});
+            public delegate bool Matcher({parameters.Where(x => !x.IsOut).Parameters()});
+            public delegate {returnType} Signature({parameters.Parameters()});
             """;
 
     public static string MockMethods(this MockGenerationTarget target)
@@ -36,12 +38,12 @@ internal static class MethodMock
                 private {{uniqueMethodName}}MethodMock {{privateName}} = new();
                 public {{uniqueMethodName}}MethodMock.ReturnValues {{method.Name}}({{parametersArr.ArgWrappers()}})
                 {
-                    {{uniqueMethodName}}MethodMock.Matcher matcher = ({{parametersArr.Args(
+                    {{uniqueMethodName}}MethodMock.Matcher matcher = ({{parametersArr.Where(x => !x.IsOut).Args(
                     "M"
                 )}}) =>
                     {
                         {{string.Join("\n\n",
-                            parametersArr.Select(p =>
+                            parametersArr.Where(x => !x.IsOut).Select(p =>
                                 $"if ({p.Name} is not null && !{p.Name}.Value.Matches({p.Name}M)) return false;"
                             )
                         )}}
@@ -60,9 +62,11 @@ internal static class MethodMock
 
                     internal {{returnType}} {{method.Name}}({{parameters}})
                     {
+                        {{string.Join("\n", parametersArr.Where(x => x.RefKind != RefKind.None).Select(param => $"{param.Name} = null!;"))}}
+                    
                         var call = new {{uniqueMethodName}}Call
                         {
-                            {{string.Join(",\n", parametersArr.Select(param => $"{param.Name} = {param.Name}"))}}
+                            {{string.Join(",\n", parametersArr.Where(x => !x.IsOut).Select(param => $"{param.Name} = {param.Name}"))}}
                         };
                         _calls.Add(call);
                         int? index = null;
@@ -71,7 +75,7 @@ internal static class MethodMock
                         {
                             var returnValues = _returnValues[i];
 
-                            if (!returnValues.Matches({{args}}))
+                            if (!returnValues.Matches({{parametersArr.Where(x => !x.IsOut).Args()}}))
                                 continue;
                                 
                             if (returnValues.OnCallsRange is null)
@@ -91,13 +95,13 @@ internal static class MethodMock
                             index = i;
                         }
 
-                        {{(method.ReturnsVoid ? "" : $"return index is null ? default! : _returnValues[index.Value].Value({args});")}}
+                        {{(method.ReturnsVoid ? "if (index is not null)" : "return index is null ? default!: ")}} _returnValues[index.Value].Value({{args}});
                     }
 
-                    {{Delegates(returnType, parameters)}}
-                    {{ReturnValues(uniqueMethodName, returnType, parameters, args, discards, method.ReturnsVoid)}}
+                    {{Delegates(returnType, parametersArr)}}
+                    {{ReturnValues(uniqueMethodName, returnType, parametersArr, args, method.ReturnsVoid)}}
                     {{ReturnValue(returnType, parameters, args)}}
-                    {{method.MockCall(uniqueMethodName)}}
+                    {{method.MockCall(uniqueMethodName, parametersArr)}}
                 }
                 #endregion {{method.Name}}({{args}})
                 """;
@@ -125,73 +129,80 @@ internal static class MethodMock
     private static string ReturnValues(
         string methodName,
         string returnType,
-        string parameters,
+        IReadOnlyList<Parameter> parameters,
         string args,
-        string discards,
         bool returnsVoid
-    ) =>
-        $$"""
+    )
+    {
+        var notOutParameters = parameters.Where(x => !x.IsOut).ToArray();
+        return $$"""
             public sealed class ReturnValues
             {
-                private int _calls;
-                private readonly Matcher _matcher;
-                private readonly {{methodName}}MethodMock _methodMock;
-                private readonly List<ReturnValue> _returnValues = [];
-                internal Range? OnCallsRange { get; private set; }
+                 private int _calls;
+                 private readonly Matcher _matcher;
+                 private readonly {{methodName}}MethodMock _methodMock;
+                 private readonly List<ReturnValue> _returnValues = [];
+                 internal Range? OnCallsRange { get; private set; }
 
-                internal ReturnValues(Matcher matcher, {{methodName}}MethodMock methodMock)
-                {
-                    _matcher = matcher;
-                    _methodMock = methodMock;
-                    methodMock._returnValues.Add(this);
-                }
-                
-                public int Calls => _methodMock.Calls(_matcher);
-                
-                internal bool Matches({{parameters}}) => _matcher({{args}});
+                 internal ReturnValues(Matcher matcher, {{methodName}}MethodMock methodMock)
+                 {
+                     _matcher = matcher;
+                     _methodMock = methodMock;
+                     methodMock._returnValues.Add(this);
+                 }
+                 
+                 public int Calls => _methodMock.Calls(_matcher);
+                 
+                 internal bool Matches({{notOutParameters.Parameters()}}) => _matcher({{notOutParameters.Args()}});
 
-                public void OnCalls(Range range) => OnCallsRange = range;
-
-                {{(returnsVoid ? "" :
-                $$"""
-                public ReturnValues Returns(params {{returnType}}[] returnValues)
-                {
+                 public void OnCalls(Range range) => OnCallsRange = range;
+                 
+                 public ReturnValues Returns(params {{(
+                    returnsVoid ? "Action" : returnType
+                )}}[] returnValues)
+                 {
                     foreach (var returnValue in returnValues)
                     {
-                        var rv = new ReturnValue(({{discards}}) => returnValue);
-                        _returnValues.Add(rv);
+                       var rv = new ReturnValue(({{parameters.Parameters()}}) => 
+                       {
+                           {{string.Join("\n",
+                                parameters.Where(x => x.IsOut).Select(x => $"{x.Name} = default!;")
+                            )}}
+                           {{(returnsVoid ? "returnValue()" : "return returnValue")}};
+                       });
+                       _returnValues.Add(rv);
                     }
 
                     return this;
+                 }
+
+                 public ReturnValues Returns(params Signature[] returnValues)
+                 {
+                     foreach (var returnValue in returnValues)
+                     {
+                         var rv = new ReturnValue(returnValue);
+                         _returnValues.Add(rv);
+                     }
+
+                     return this;
                 }
 
-                public ReturnValues Returns(params Signature[] returnValues)
-                {
-                    foreach (var returnValue in returnValues)
-                    {
-                        var rv = new ReturnValue(returnValue);
-                        _returnValues.Add(rv);
-                    }
-
-                    return this;
-                }
-                
-                internal {{returnType}} Value({{parameters}})
+                internal {{returnType}} Value({{parameters.Parameters()}})
                 {
                     var index = 0;
-                    
+
                     for (var i = 0; i < _returnValues.Count; i++)
                     {
-                        if (i > _calls)
-                            break;
-                            
-                        index = i;
+                       if (i > _calls)
+                           break;
+                           
+                       index = i;
                     }
-                
+
                     _calls++;
-                    return _returnValues[index].Value({{args}});
+                    {{(returnsVoid ? "" : "return ")}}_returnValues[index].Value({{args}});
                 }
-                """)}}
             }
             """;
+    }
 }
