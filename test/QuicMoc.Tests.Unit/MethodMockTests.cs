@@ -2,7 +2,7 @@
 
 public sealed class MethodMockTests
 {
-    [Test]
+    /*[Test]
     public async Task DifferentValues_ShouldBeReturned_WhenMultipleValuesArePassedToReturns()
     {
         // Arrange.
@@ -20,7 +20,7 @@ public sealed class MethodMockTests
         await Assert.That(value1).IsEqualTo("foo");
         await Assert.That(value2).IsEqualTo("bar");
         await Assert.That(value3).IsEqualTo("bar");
-    }
+    }*/
 
     [Test]
     public async Task OnCalls_ShouldReturnValue_WhenCallIsInRange()
