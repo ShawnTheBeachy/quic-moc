@@ -49,21 +49,40 @@ internal static class ParameterExtensions
             )
         );
 
-    public static string Args(this IEnumerable<Parameter> parameters, string? suffix = null) =>
-        string.Join(", ", parameters.Select(x => $"{x.Ref()}{x.Name}{suffix}"));
-
-    public static IEnumerable<(string Type, string Name)> Generics(this IMethodSymbol symbol) =>
-        symbol.TypeParameters.Select((param, i) => ("Type", $"{param.Name.ToLower()}{i}"));
+    public static string Args(
+        this IEnumerable<Parameter> parameters,
+        IMethodSymbol? method,
+        string? suffix = null
+    ) =>
+        string.Join(
+            ", ",
+            parameters
+                .Select(x => $"{x.Ref()}{x.Name}{suffix}")
+                .Concat(method?.TypeParameters.Select(param => $"typeof({param.Name})") ?? [])
+        );
 
     public static string Parameters(
         this IEnumerable<Parameter> parameters,
+        IMethodSymbol? method,
         bool includeDefaults = true
     ) =>
         string.Join(
             ", ",
-            parameters.Select(x =>
-                $"{x.Ref()}{x.Type}{(x.IsNullable ? "?" : "")} {x.Name}{(includeDefaults && x.DefaultValue is not null ? $" = {x.DefaultValue}" : "")}"
-            )
+            parameters
+                .Select(x =>
+                    (
+                        Type: $"{x.Ref()}{x.Type}{(x.IsNullable ? "?" : "")}",
+                        Name: $"{x.Name}{(includeDefaults && x.DefaultValue is not null ? $" = {x.DefaultValue}" : "")}"
+                    )
+                )
+                .Concat(
+                    method is null
+                        ? []
+                        : Enumerable
+                            .Repeat("Type", method.Arity)
+                            .Select((x, i) => (Type: x, Name: $"t{i}"))
+                )
+                .Select(x => $"{x.Type} {x.Name}")
         );
 
     private static string Ref(this Parameter parameter) =>

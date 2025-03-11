@@ -1,11 +1,15 @@
 ﻿using System.Collections.Generic;
+using Microsoft.CodeAnalysis;
 using QuicMoc.Models;
 
 namespace QuicMoc.Generators;
 
 internal static class ReturnValue
 {
-    public static string MockReturnValue(string returnType, IReadOnlyList<Parameter> parameters) =>
+    public static string MockReturnValue(
+        IMethodSymbol method,
+        IReadOnlyList<Parameter> parameters
+    ) =>
         $$"""
             internal readonly record struct ReturnValue
             {
@@ -16,7 +20,8 @@ internal static class ReturnValue
                     _value = value;
                 }
 
-                public {{returnType}} Value({{parameters.Parameters()}}) => _value({{parameters.Args()}});
+                public {{method.ReturnType()}} Value({{parameters.Parameters(null)}})
+                    => _value({{parameters.Args(null)}});
             }
             """;
 }

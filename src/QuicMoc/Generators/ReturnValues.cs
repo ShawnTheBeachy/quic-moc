@@ -10,10 +10,9 @@ internal static class ReturnValues
     public static string MockReturnValues(
         IMethodSymbol method,
         string methodName,
-        string returnType,
         string generics,
         IReadOnlyList<Parameter> parameters,
-        IReadOnlyList<Parameter> notOutParameters,
+        IReadOnlyList<Parameter> inParameters,
         string args,
         bool returnsVoid
     ) =>
@@ -35,27 +34,25 @@ internal static class ReturnValues
              
              public int Calls => _methodMock.Calls(_matcher);
              
-             internal bool Matches{{generics}}({{notOutParameters.Parameters()}}) => _matcher({{notOutParameters.Args()}}{{(method.Arity < 1 ? "" : $"{(notOutParameters.Count > 0 ? ", " : "")}{string.Join(", ", method.TypeParameters.Select(param => $"typeof({param.Name})"))}")}});
+             internal bool Matches{{generics}}({{inParameters.Parameters(null)}}) => _matcher({{inParameters.Args(method)}});
 
              public void OnCalls(Range range) => OnCallsRange = range;
              
-             public ReturnValues Returns(params {{(
-                returnsVoid ? "Action" : returnType
-            )}}[] returnValues)
+             public ReturnValues Returns(params {{(returnsVoid ? "Action" : method.ReturnType())}}[] returnValues)
              {
-                foreach (var returnValue in returnValues)
-                {
-                   var rv = new ReturnValue(({{parameters.Parameters()}}) => 
-                   {
+                 foreach (var returnValue in returnValues)
+                 {
+                    var rv = new ReturnValue(({{parameters.Parameters(null)}}) => 
+                    {
                        {{string.Join("\n",
                             parameters.Where(x => x.IsOut).Select(x => $"{x.Name} = default!;")
                         )}}
                        {{(returnsVoid ? "returnValue()" : "return returnValue")}};
-                   });
-                   _returnValues.Add(rv);
-                }
+                    });
+                    _returnValues.Add(rv);
+                 }
 
-                return this;
+                 return this;
              }
 
              public ReturnValues Returns(params Signature[] returnValues)
@@ -69,7 +66,7 @@ internal static class ReturnValues
                  return this;
             }
 
-            internal {{returnType}} Value({{parameters.Parameters()}})
+            internal {{method.ReturnType()}} Value({{parameters.Parameters(null)}})
             {
                 var index = 0;
 

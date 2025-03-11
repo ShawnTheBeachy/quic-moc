@@ -15,15 +15,17 @@ internal static class Call
     {
         var props = parameters
             .Select(param => (Type: param.Type.Name, Name: param.Name))
-            .Concat(method.Generics())
+            .Concat(
+                method.TypeParameters.Select(
+                    (param, i) => (Type: "Type", Name: $"{param.Name.ToLower()}{i}")
+                )
+            )
             .ToArray();
         return $$"""
              internal readonly record struct {{methodName}}Call
              {
                  {{string.Join("\n", props.Select(prop =>
-                     $$"""
-                       public required {{prop.Type}} {{prop.Name}} { get; init; }
-                       """
+                     $"public required {prop.Type} {prop.Name} {{ get; init; }}"
                  ))}}
                      
                  public bool Matches(Matcher matcher) =>
