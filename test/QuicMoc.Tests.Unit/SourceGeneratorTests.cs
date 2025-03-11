@@ -1,5 +1,6 @@
-﻿/*using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;*/
+﻿/*
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace QuicMoc.Tests.Unit;
 
@@ -20,12 +21,12 @@ public sealed class Tests
     public interface IFoo
     {
         string Greeting { get; }
-        string Greet(string name, string? lastName = null);
+        string Greet(string name, string? lastName = null, out string prefix);
     }
 }
 ";
 
-    /*[Test]
+    [Test]
     public async Task Target_ShouldOutcome_WhenScenario()
     {
         // Arrange.
@@ -50,5 +51,6 @@ public sealed class Tests
 
         // Assert.
         await Assert.That((await generatedFileSyntax.GetTextAsync()).ToString()).IsEqualTo("");
-    }*/
+    }
 }
+*/

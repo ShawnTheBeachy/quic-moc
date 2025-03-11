@@ -24,7 +24,7 @@ internal static class MethodMock
             var parametersArr = method.Parameters.Select(x => new Parameter(x)).ToArray();
             var parameters = parametersArr.Parameters();
             var args = parametersArr.Args();
-            var anonArgs = parametersArr.Discards();
+            var discards = parametersArr.Discards();
             var privateName =
                 $"_{uniqueMethodName[0].ToString().ToLower()}{uniqueMethodName.Substring(1)}";
             var source = $$"""
@@ -34,60 +34,70 @@ internal static class MethodMock
                 )}}) => {{privateName}}.{{method.Name}}({{args}});
 
                 private {{uniqueMethodName}}MethodMock {{privateName}} = new();
-                public {{uniqueMethodName}}MethodMock.ReturnValuesBuilder {{method.Name}}({{parametersArr.ArgWrappers()}})
+                public {{uniqueMethodName}}MethodMock.ReturnValues {{method.Name}}({{parametersArr.ArgWrappers()}})
                 {
                     {{uniqueMethodName}}MethodMock.Matcher matcher = ({{parametersArr.Args(
                     "M"
                 )}}) =>
                     {
-                        {{string.Join(
-                    "\n\n",
-                    parametersArr.Select(p =>
-                        $"if ({p.Name} is not null && !{p.Name}.Value.Matches({p.Name}M)) return false;"
-                    )
-                )}}
+                        {{string.Join("\n\n",
+                            parametersArr.Select(p =>
+                                $"if ({p.Name} is not null && !{p.Name}.Value.Matches({p.Name}M)) return false;"
+                            )
+                        )}}
 
                         return true;
                     };
-                    return new {{uniqueMethodName}}MethodMock.ReturnValuesBuilder(matcher, {{privateName}});
+                    return new {{uniqueMethodName}}MethodMock.ReturnValues(matcher, {{privateName}});
                 }
 
                 public sealed class {{uniqueMethodName}}MethodMock
                 {
-                    private int _calls;
-                    private readonly List<ReturnValue> _returnValues = [new ReturnValue(({{anonArgs}}) => true, ({{anonArgs}}) => {{(method.ReturnsVoid ? " { }" : "default!")}})];
+                    private readonly List<{{uniqueMethodName}}Call> _calls = [];
+                    private readonly List<ReturnValues> _returnValues = [];
+                    
+                    internal int Calls(Matcher matcher) => _calls.Count(call => call.Matches(matcher));
 
                     internal {{returnType}} {{method.Name}}({{parameters}})
                     {
-                        _calls++;
-                    
-                        for (var i = _returnValues.Count - 1; i >= 0; i--)
+                        var call = new {{uniqueMethodName}}Call
                         {
-                            var returnValue = _returnValues[i];
-                            
-                            if (!returnValue.Matches({{args}}))
+                            {{string.Join(",\n", parametersArr.Select(param => $"{param.Name} = {param.Name}"))}}
+                        };
+                        _calls.Add(call);
+                        int? index = null;
+
+                        for (var i = 0; i < _returnValues.Count; i++)
+                        {
+                            var returnValues = _returnValues[i];
+
+                            if (!returnValues.Matches({{args}}))
                                 continue;
                                 
-                            if (returnValue.OnCallsRange is null)
-                                return returnValue.Value({{args}});
+                            if (returnValues.OnCallsRange is null)
+                            {
+                                index = i;
+                                continue;
+                            }
                                 
-                            if (returnValue.OnCallsRange.Value.Start.Value > _calls)
+                            if (returnValues.OnCallsRange.Value.Start.Value > _calls.Count)
                                 continue;
 
-                            if (returnValue.OnCallsRange.Value.End.Value < _calls
-                                && !returnValue.OnCallsRange.Value.End.IsFromEnd
+                            if (returnValues.OnCallsRange.Value.End.Value < _calls.Count
+                                && !returnValues.OnCallsRange.Value.End.IsFromEnd
                             )
                                 continue;
-                        
-                            return returnValue.Value({{args}});
+
+                            index = i;
                         }
 
-                        {{(method.ReturnsVoid ? "" : "return default!;")}}
+                        {{(method.ReturnsVoid ? "" : $"return index is null ? default! : _returnValues[index.Value].Value({args});")}}
                     }
-                    
+
                     {{Delegates(returnType, parameters)}}
-                    {{ReturnValuesBuilder( uniqueMethodName, returnType, anonArgs, method.ReturnsVoid)}}
+                    {{ReturnValues(uniqueMethodName, returnType, parameters, args, discards, method.ReturnsVoid)}}
                     {{ReturnValue(returnType, parameters, args)}}
+                    {{method.MockCall(uniqueMethodName)}}
                 }
                 #endregion {{method.Name}}({{args}})
                 """;
@@ -99,80 +109,87 @@ internal static class MethodMock
 
     private static string ReturnValue(string returnType, string parameters, string args) =>
         $$"""
-            internal sealed class ReturnValue
+            internal readonly record struct ReturnValue
             {
-                private int _calls;
-                private readonly Matcher _matcher;
                 private readonly Signature _value;
-                internal Range? OnCallsRange { get; private set; }
 
-                public ReturnValue(Matcher matcher, Signature value)
+                public ReturnValue(Signature value)
                 {
-                    _matcher = matcher;
                     _value = value;
                 }
 
-                public bool Matches({{parameters}}) => _matcher({{args}});
-
-                public void OnCalls(Range range) => OnCallsRange = range;
-                
-                public {{returnType}} Value({{parameters}})
-                {
-                    _calls++;
-                    return _value({{args}});
-                }
+                public {{returnType}} Value({{parameters}}) => _value({{args}});
             }
             """;
 
-    private static string ReturnValuesBuilder(
+    private static string ReturnValues(
         string methodName,
         string returnType,
-        string anonymousArgs,
+        string parameters,
+        string args,
+        string discards,
         bool returnsVoid
     ) =>
         $$"""
-            public sealed class ReturnValuesBuilder
+            public sealed class ReturnValues
             {
+                private int _calls;
                 private readonly Matcher _matcher;
                 private readonly {{methodName}}MethodMock _methodMock;
                 private readonly List<ReturnValue> _returnValues = [];
-                
-                internal ReturnValuesBuilder(Matcher matcher, {{methodName}}MethodMock methodMock)
+                internal Range? OnCallsRange { get; private set; }
+
+                internal ReturnValues(Matcher matcher, {{methodName}}MethodMock methodMock)
                 {
                     _matcher = matcher;
                     _methodMock = methodMock;
+                    methodMock._returnValues.Add(this);
                 }
                 
-                public void OnCalls(Range range)
-                {
-                    foreach (var returnValue in _returnValues)
-                        returnValue.OnCalls(range);
-                }
+                public int Calls => _methodMock.Calls(_matcher);
+                
+                internal bool Matches({{parameters}}) => _matcher({{args}});
+
+                public void OnCalls(Range range) => OnCallsRange = range;
 
                 {{(returnsVoid ? "" :
                 $$"""
-                public ReturnValuesBuilder Returns(params {{returnType}}[] returnValues)
+                public ReturnValues Returns(params {{returnType}}[] returnValues)
                 {
                     foreach (var returnValue in returnValues)
                     {
-                        var rv = new ReturnValue(_matcher, ({{anonymousArgs}}) => returnValue);
-                        _methodMock._returnValues.Add(rv);
+                        var rv = new ReturnValue(({{discards}}) => returnValue);
                         _returnValues.Add(rv);
                     }
-                    
+
                     return this;
                 }
 
-                public ReturnValuesBuilder Returns(params Signature[] returnValues)
+                public ReturnValues Returns(params Signature[] returnValues)
                 {
                     foreach (var returnValue in returnValues)
                     {
-                        var rv = new ReturnValue(_matcher, returnValue);
-                        _methodMock._returnValues.Add(rv);
+                        var rv = new ReturnValue(returnValue);
                         _returnValues.Add(rv);
                     }
-                    
+
                     return this;
+                }
+                
+                internal {{returnType}} Value({{parameters}})
+                {
+                    var index = 0;
+                    
+                    for (var i = 0; i < _returnValues.Count; i++)
+                    {
+                        if (i > _calls)
+                            break;
+                            
+                        index = i;
+                    }
+                
+                    _calls++;
+                    return _returnValues[index].Value({{args}});
                 }
                 """)}}
             }

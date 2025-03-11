@@ -2,12 +2,33 @@
 
 public sealed class MethodMockTests
 {
-    /*[Test]
+    [Test]
+    public async Task Calls_ShouldReturnNumberOfCalls_WhenCallsMatch()
+    {
+        // Arrange.
+        var mock = new Mock<IMethodMockTests>().Quick();
+        mock.Greet("foo").Returns("foo");
+        mock.Greet("bar").Returns("bar");
+
+        // Act.
+        IMethodMockTests sut = mock;
+        sut.Greet("");
+        sut.Greet("foo");
+        sut.Greet("bar");
+        sut.Greet("bar");
+
+        // Assert.
+        using var asserts = Assert.Multiple();
+        await Assert.That(mock.Greet("foo").Calls).IsEqualTo(1);
+        await Assert.That(mock.Greet("bar").Calls).IsEqualTo(2);
+    }
+
+    [Test]
     public async Task DifferentValues_ShouldBeReturned_WhenMultipleValuesArePassedToReturns()
     {
         // Arrange.
         var mock = new Mock<IMethodMockTests>().Quick();
-        mock.Greet().Returns(() => "foo", () => "bar");
+        mock.Greet().Returns("foo", "bar");
 
         // Act.
         IMethodMockTests sut = mock;
@@ -20,7 +41,47 @@ public sealed class MethodMockTests
         await Assert.That(value1).IsEqualTo("foo");
         await Assert.That(value2).IsEqualTo("bar");
         await Assert.That(value3).IsEqualTo("bar");
-    }*/
+    }
+
+    [Test]
+    public async Task DifferentValues_ShouldBeReturned_WhenParametersAreSpecified()
+    {
+        // Arrange.
+        var mock = new Mock<IMethodMockTests>().Quick();
+        mock.Greet("foo").Returns("foo");
+        mock.Greet("bar").Returns("bar");
+
+        // Act.
+        IMethodMockTests sut = mock;
+        string value1 = sut.Greet(),
+            value2 = sut.Greet("foo"),
+            value3 = sut.Greet("bar");
+
+        // Assert.
+        using var asserts = Assert.Multiple();
+        await Assert.That(value1).IsNull();
+        await Assert.That(value2).IsEqualTo("foo");
+        await Assert.That(value3).IsEqualTo("bar");
+    }
+
+    [Test]
+    public async Task NewValue_ShouldBeReturned_WhenReturnValueIsOverwritten()
+    {
+        // Arrange.
+        var mock = new Mock<IMethodMockTests>().Quick();
+        mock.Greet().Returns("foo");
+
+        // Act.
+        IMethodMockTests sut = mock;
+        var value1 = sut.Greet();
+        mock.Greet().Returns("bar");
+        var value2 = sut.Greet();
+
+        // Assert.
+        using var asserts = Assert.Multiple();
+        await Assert.That(value1).IsEqualTo("foo");
+        await Assert.That(value2).IsEqualTo("bar");
+    }
 
     [Test]
     public async Task OnCalls_ShouldReturnValue_WhenCallIsInRange()
@@ -72,5 +133,7 @@ public sealed class MethodMockTests
 
 internal interface IMethodMockTests
 {
+    void Greet(string name, out string greeting);
     string Greet();
+    string Greet(string name);
 }
