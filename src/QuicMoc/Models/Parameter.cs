@@ -50,10 +50,10 @@ internal static class ParameterExtensions
         );
 
     public static string Args(this IEnumerable<Parameter> parameters, string? suffix = null) =>
-        string.Join(", ", parameters.Select(x => $"{x.Ref()} {x.Name}{suffix}"));
+        string.Join(", ", parameters.Select(x => $"{x.Ref()}{x.Name}{suffix}"));
 
-    public static string Discards(this IEnumerable<Parameter> parameters) =>
-        string.Join(", ", parameters.Select(x => $"{x.Ref()} {x.Type.Name} _"));
+    public static IEnumerable<(string Type, string Name)> Generics(this IMethodSymbol symbol) =>
+        symbol.TypeParameters.Select((param, i) => ("Type", $"{param.Name.ToLower()}{i}"));
 
     public static string Parameters(
         this IEnumerable<Parameter> parameters,
@@ -62,16 +62,16 @@ internal static class ParameterExtensions
         string.Join(
             ", ",
             parameters.Select(x =>
-                $"{x.Ref()} {x.Type}{(x.IsNullable ? "?" : "")} {x.Name}{(includeDefaults && x.DefaultValue is not null ? $" = {x.DefaultValue}" : "")}"
+                $"{x.Ref()}{x.Type}{(x.IsNullable ? "?" : "")} {x.Name}{(includeDefaults && x.DefaultValue is not null ? $" = {x.DefaultValue}" : "")}"
             )
         );
 
     private static string Ref(this Parameter parameter) =>
         parameter.RefKind switch
         {
-            RefKind.In => "in",
-            RefKind.Out => "out",
-            RefKind.Ref => "ref",
+            RefKind.In => "in ",
+            RefKind.Out => "out ",
+            RefKind.Ref => "ref ",
             _ => "",
         };
 }

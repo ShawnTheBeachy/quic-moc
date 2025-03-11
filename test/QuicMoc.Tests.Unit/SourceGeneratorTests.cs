@@ -21,7 +21,7 @@ public sealed class Tests
     public interface IFoo
     {
         string Greeting { get; }
-        string Greet(string name, string? lastName = null, out string prefix);
+        string Greet<T>(string name, string? lastName = null, out string prefix);
     }
 }
 ";

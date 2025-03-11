@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using QuicMoc.Generators;
 using QuicMoc.Models;
 using QuicMoc.Sources;
 
@@ -52,7 +53,7 @@ public sealed class SourceGenerator : IIncrementalGenerator
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         context.RegisterPostInitializationOutput(ctx =>
-            ctx.AddArgSource().AddMockSource().AddPropertyMockSource()
+            ctx.AddAnyTypeSource().AddArgSource().AddMockSource().AddPropertyMockSource()
         );
 
         var provider = context

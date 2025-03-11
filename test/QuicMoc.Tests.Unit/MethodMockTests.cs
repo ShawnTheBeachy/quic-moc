@@ -65,6 +65,60 @@ public sealed class MethodMockTests
     }
 
     [Test]
+    public async Task Generic_ShouldMatch_WhenAnyType()
+    {
+        // Arrange.
+        var mock = new Mock<IMethodMockTests>().Quick();
+        mock.Greet<AnyType>().Returns("foo");
+
+        // Act.
+        IMethodMockTests sut = mock;
+        var value1 = sut.Greet<string>();
+        var value2 = sut.Greet<int>();
+
+        // Assert.
+        using var asserts = Assert.Multiple();
+        await Assert.That(value1).IsEqualTo("foo");
+        await Assert.That(value2).IsEqualTo("foo");
+        await Assert.That(mock.Greet<AnyType>().Calls).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task Generic_ShouldMatch_WhenSameGeneric()
+    {
+        // Arrange.
+        var mock = new Mock<IMethodMockTests>().Quick();
+        mock.Greet<string>().Returns("foo");
+
+        // Act.
+        IMethodMockTests sut = mock;
+        var greeting = sut.Greet<string>();
+
+        // Assert.
+        using var asserts = Assert.Multiple();
+        await Assert.That(greeting).IsEqualTo("foo");
+        await Assert.That(mock.Greet<string>().Calls).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Generic_ShouldNotMatch_WhenDifferentGeneric()
+    {
+        // Arrange.
+        var mock = new Mock<IMethodMockTests>().Quick();
+        mock.Greet<string>().Returns("foo");
+
+        // Act.
+        IMethodMockTests sut = mock;
+        var greeting = sut.Greet<int>();
+
+        // Assert.
+        using var asserts = Assert.Multiple();
+        await Assert.That(greeting).IsNull();
+        await Assert.That(mock.Greet<int>().Calls).IsEqualTo(1);
+        await Assert.That(mock.Greet<string>().Calls).IsEqualTo(0);
+    }
+
+    [Test]
     public async Task NewValue_ShouldBeReturned_WhenReturnValueIsOverwritten()
     {
         // Arrange.
@@ -154,6 +208,7 @@ public sealed class MethodMockTests
 
 internal interface IMethodMockTests
 {
+    string Greet<T>();
     void Greet(string name, out string greeting);
     string Greet();
     string Greet(string name);
