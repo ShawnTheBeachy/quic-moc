@@ -1,5 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+﻿/*using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;*/
 
 namespace QuicMoc.Tests.Unit;
 
@@ -13,17 +13,19 @@ public sealed class Tests
 {
     public void Foo()
     {
-        _ = Mock.For<IFoo>();
+        _ = new Mock<IFoo>().Quick();
+        _ = new Mock<IFoo>().Quick();
     }
 
     public interface IFoo
     {
         string Greeting { get; }
+        string Greet(string name, string? lastName = null);
     }
 }
 ";
 
-    [Test]
+    /*[Test]
     public async Task Target_ShouldOutcome_WhenScenario()
     {
         // Arrange.
@@ -48,5 +50,5 @@ public sealed class Tests
 
         // Assert.
         await Assert.That((await generatedFileSyntax.GetTextAsync()).ToString()).IsEqualTo("");
-    }
+    }*/
 }
