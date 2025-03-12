@@ -14,15 +14,15 @@ internal static class ReturnValues
         IReadOnlyList<Parameter> inParameters
     ) =>
         $$"""
-        public sealed class ReturnValues
+        internal sealed class ReturnValues
         {
              private int _calls;
              private readonly Matcher _matcher;
              private readonly {{methodName}}MethodMock _methodMock;
              private readonly List<ReturnValue> _items = [];
-             internal Range? OnCallsRange { get; private set; }
+             public Range? OnCallsRange { get; private set; }
 
-             internal ReturnValues(Matcher matcher, {{methodName}}MethodMock methodMock)
+             public ReturnValues(Matcher matcher, {{methodName}}MethodMock methodMock)
              {
                  _matcher = matcher;
                  _methodMock = methodMock;
@@ -31,11 +31,11 @@ internal static class ReturnValues
 
              public int Calls => _methodMock.Calls(_matcher);
 
-             internal bool {{"Matches".MakeGeneric(method.TypeParameters)}}({{inParameters.Parameters(null)}}) => _matcher({{inParameters.Args(method)}});
+             public bool {{"Matches".MakeGeneric(method.TypeParameters)}}({{inParameters.Parameters(null)}}) => _matcher({{inParameters.Args(method)}});
 
              public void OnCalls(Range range) => OnCallsRange = range;
 
-             internal {{method.ReturnType()}} {{"Value".MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(null)}})
+             public {{method.ReturnType()}} {{"Value".MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(null)}})
              {
                 var index = 0;
 
@@ -51,48 +51,48 @@ internal static class ReturnValues
                 {{(method.ReturnsVoid ? "" : $"return {(method.ReturnType.IsGeneric(method) ? $"({method.ReturnType})" : "")}")}}
                     _items[index].Value({{string.Join(", ", parameters.Select(x => $"{x.Ref()} {x.Name}"))}});
              }
+        }
+        
+        public sealed class {{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}}
+        {
+            private readonly ReturnValues _returnValues;
             
-            public sealed class {{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}}
+            internal ReturnValuesBuilder(ReturnValues returnValues)
             {
-                private readonly ReturnValues _returnValues;
-                
-                internal ReturnValuesBuilder(ReturnValues returnValues)
-                {
-                    _returnValues = returnValues;
-                }
-            
-                public int Calls => _returnValues.Calls;
+                _returnValues = returnValues;
+            }
         
-                public void OnCalls(Range range) => _returnValues.OnCalls(range);
+            public int Calls => _returnValues.Calls;
         
-                public {{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} Returns(params {{(method.ReturnsVoid ? "Action" : method.ReturnType())}}[] returnValues)
+            public void OnCalls(Range range) => _returnValues.OnCalls(range);
+        
+            public {{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} Returns(params {{(method.ReturnsVoid ? "Action" : method.ReturnType())}}[] returnValues)
+            {
+                foreach (var returnValue in returnValues)
                 {
-                    foreach (var returnValue in returnValues)
-                    {
-                       var rv = new ReturnValue(({{parameters.Parameters(method, replaceGenericsWithObject: true, includeTypeParams: false)}}) =>
-                       {
-                            {{string.Join("\n",
+                   var rv = new ReturnValue(({{parameters.Parameters(method, replaceGenericsWithObject: true, includeTypeParams: false)}}) =>
+                   {
+                        {{string.Join("\n",
                                 parameters.Where(x => x.IsOut).Select(x => $"{x.Name} = default!;")
                             )}}
-                            {{(method.ReturnsVoid ? "returnValue()" : "return returnValue")}};
-                       });
-                       _returnValues._items.Add(rv);
-                    }
-                    
-                    return this;
+                        {{(method.ReturnsVoid ? "returnValue()" : "return returnValue")}};
+                   });
+                   _returnValues._items.Add(rv);
                 }
-            
-                public {{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} Returns(params {{"Signature".MakeGeneric(method.TypeParameters)}}[] returnValues)
-                {
-                    foreach (var returnValue in returnValues)
-                    {
-                        var rv = new ReturnValue(({{parameters.Args(method, includeTypes: true, includeTypeParams: false, replaceGenericsWithObject: true)}}) =>
-                           returnValue({{parameters.ArgsWithGenericCasts(method)}}));
-                        _returnValues._items.Add(rv);
-                    }
+                
+                return this;
+            }
         
-                    return this;
+            public {{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} Returns(params {{"Signature".MakeGeneric(method.TypeParameters)}}[] returnValues)
+            {
+                foreach (var returnValue in returnValues)
+                {
+                    var rv = new ReturnValue(({{parameters.Args(method, includeTypes: true, includeTypeParams: false, replaceGenericsWithObject: true)}}) =>
+                       returnValue({{parameters.ArgsWithGenericCasts(method)}}));
+                    _returnValues._items.Add(rv);
                 }
+        
+                return this;
             }
         }
         """;

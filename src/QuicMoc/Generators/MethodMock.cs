@@ -63,11 +63,11 @@ internal static class MethodMock
                     => {{privateName}}.{{method.Name.MakeGeneric(method.TypeParameters)}}({{args}});
 
                 private {{uniqueMethodName}}MethodMock {{privateName}} = new();
-                public {{uniqueMethodName}}MethodMock.ReturnValues.{{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} {{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.ArgWrappers()}})
+                public {{uniqueMethodName}}MethodMock.{{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} {{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.ArgWrappers()}})
                 {
                     {{Matcher(method, uniqueMethodName, inParameters)}}
                     var returnValues = new {{uniqueMethodName}}MethodMock.ReturnValues(matcher, {{privateName}});
-                    return new {{uniqueMethodName}}MethodMock.ReturnValues.{{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}}(returnValues);
+                    return new {{uniqueMethodName}}MethodMock.{{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}}(returnValues);
                 }
 
                 public sealed class {{uniqueMethodName}}MethodMock
