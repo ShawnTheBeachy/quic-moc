@@ -9,7 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{33284065-7
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuicMoc", "src\QuicMoc\QuicMoc.csproj", "{36065AAF-91CB-4A77-862B-49E166314EC5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuicMoc.ConsoleApp", "src\QuicMoc.ConsoleApp\QuicMoc.ConsoleApp.csproj", "{76F661D4-7DD9-4962-9E0A-FB54D7B9AEA7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuicMoc.Benchmarks", "src\QuicMoc.Benchmarks\QuicMoc.Benchmarks.csproj", "{76F661D4-7DD9-4962-9E0A-FB54D7B9AEA7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuicMoc.Tests.Unit", "test\QuicMoc.Tests.Unit\QuicMoc.Tests.Unit.csproj", "{41B80089-4358-4FB3-B35B-E64CDA5F0530}"
 EndProject

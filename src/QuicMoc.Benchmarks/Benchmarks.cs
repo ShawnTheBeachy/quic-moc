@@ -3,7 +3,7 @@ using BenchmarkDotNet.Jobs;
 using Moq;
 using NSubstitute;
 
-namespace QuicMoc.ConsoleApp;
+namespace QuicMoc.Benchmarks;
 
 [SimpleJob(runtimeMoniker: RuntimeMoniker.Net90)]
 [MemoryDiagnoser]
