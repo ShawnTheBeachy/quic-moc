@@ -69,18 +69,17 @@ public sealed class MethodMockTests
     {
         // Arrange.
         var mock = new Mock<IMethodMockTests>().Quick();
-        mock.Greet<AnyType>().Returns("foo");
 
         // Act.
         IMethodMockTests sut = mock;
-        var value1 = sut.Greet<string>();
-        var value2 = sut.Greet<int>();
+        var value1 = sut.Convert<string, int>("");
+        var value2 = sut.Convert<int, string>(0);
 
         // Assert.
         using var asserts = Assert.Multiple();
-        await Assert.That(value1).IsEqualTo("foo");
-        await Assert.That(value2).IsEqualTo("foo");
-        await Assert.That(mock.Greet<AnyType>().Calls).IsEqualTo(2);
+        await Assert.That(value1).IsDefault();
+        await Assert.That(value2).IsDefault();
+        await Assert.That(mock.Convert<AnyType, AnyType>().Calls).IsEqualTo(2);
     }
 
     [Test]
@@ -88,16 +87,16 @@ public sealed class MethodMockTests
     {
         // Arrange.
         var mock = new Mock<IMethodMockTests>().Quick();
-        mock.Greet<string>().Returns("foo");
+        mock.Convert<int, string>().Returns(x => x.ToString());
 
         // Act.
         IMethodMockTests sut = mock;
-        var greeting = sut.Greet<string>();
+        var converted = sut.Convert<int, string>(3);
 
         // Assert.
         using var asserts = Assert.Multiple();
-        await Assert.That(greeting).IsEqualTo("foo");
-        await Assert.That(mock.Greet<string>().Calls).IsEqualTo(1);
+        await Assert.That(converted).IsEqualTo("3");
+        await Assert.That(mock.Convert<int, string>().Calls).IsEqualTo(1);
     }
 
     [Test]
@@ -105,17 +104,17 @@ public sealed class MethodMockTests
     {
         // Arrange.
         var mock = new Mock<IMethodMockTests>().Quick();
-        mock.Greet<string>().Returns("foo");
+        mock.Convert<int, double>().Returns(x => x);
 
         // Act.
         IMethodMockTests sut = mock;
-        var greeting = sut.Greet<int>();
+        var converted = sut.Convert<int, string>(3);
 
         // Assert.
         using var asserts = Assert.Multiple();
-        await Assert.That(greeting).IsNull();
-        await Assert.That(mock.Greet<int>().Calls).IsEqualTo(1);
-        await Assert.That(mock.Greet<string>().Calls).IsEqualTo(0);
+        await Assert.That(converted).IsNull();
+        await Assert.That(mock.Convert<int, string>().Calls).IsEqualTo(1);
+        await Assert.That(mock.Convert<string, int>().Calls).IsEqualTo(0);
     }
 
     [Test]
@@ -189,7 +188,7 @@ public sealed class MethodMockTests
     {
         // Arrange.
         var mock = new Mock<IMethodMockTests>().Quick();
-        mock.Greet(Arg<string>.Any(), Arg<string>.Any())
+        mock.Greet<AnyType>(Arg<string>.Any(), Arg<string>.Any())
             .Returns(
                 (string _, out string g) =>
                 {
@@ -199,7 +198,7 @@ public sealed class MethodMockTests
 
         // Act.
         IMethodMockTests sut = mock;
-        sut.Greet("foo", out var greeting);
+        sut.Greet<string>("foo", out var greeting);
 
         // Assert.
         await Assert.That(greeting).IsEqualTo("foo");
@@ -208,8 +207,8 @@ public sealed class MethodMockTests
 
 internal interface IMethodMockTests
 {
-    string Greet<T>();
-    void Greet(string name, out string greeting);
+    TR Convert<T, TR>(T value);
+    void Greet<T>(string name, out string greeting);
     string Greet();
     string Greet(string name);
 }

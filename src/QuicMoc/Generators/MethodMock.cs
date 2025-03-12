@@ -11,13 +11,13 @@ internal static class MethodMock
         IMethodSymbol method,
         IReadOnlyList<Parameter> parameters,
         IReadOnlyList<Parameter> inParameters
-    )
-    {
-        return $"""
-            public delegate bool Matcher({inParameters.Parameters(method)});
-            public delegate {method.ReturnType()} Signature({parameters.Parameters(null)});
-            """;
-    }
+    ) =>
+        $"""
+        public delegate bool Matcher({inParameters.Parameters(method, replaceGenericsWithObject: true)});
+        public delegate {method.ReturnType()} {"Signature".MakeGeneric(
+            method.TypeParameters
+        )}({parameters.Parameters(null)});
+        """;
 
     private static string Matcher(
         IMethodSymbol method,
@@ -33,11 +33,11 @@ internal static class MethodMock
             {{methodName}}MethodMock.Matcher matcher = ({{parameters.Args(null, "M")}}{{(method.Arity < 1 ? "" : $"{(parameters.Count > 0 ? ", " : "")}{string.Join(", ", typeParams)}")}}) =>
             {
                 {{(method.Arity < 1 ? "" : string.Join("\n\n", typeParams.Select((x, i) => $"if (typeof({method.TypeParameters[i].Name}) != typeof(AnyType) && {x} != typeof({method.TypeParameters[i].Name})) return false;")))}}
-            
+
                 {{string.Join("\n\n", parameters.Select(p =>
                     $"if ({p.Name} is not null && !{p.Name}.Value.Matches({p.Name}M)) return false;"
                 ))}}
-            
+
                 return true;
             };
             """;
@@ -57,45 +57,41 @@ internal static class MethodMock
             var args = parameters.Args(null);
             var privateName =
                 $"_{uniqueMethodName[0].ToString().ToLower()}{uniqueMethodName.Substring(1)}";
-            var generics =
-                method.Arity < 1
-                    ? ""
-                    : $"<{string.Join(", ", method.TypeParameters.Select(x => x.Name))}>";
             var source = $$"""
-                #region {{method.Name}}{{generics}}({{args}})
-                {{method.ReturnType()}} {{target.FullTypeName}}.{{method.Name}}{{generics}}({{parameters.Parameters(null, false)}})
-                    => {{privateName}}.{{method.Name}}{{generics}}({{args}});
+                #region {{method.Name}}{{method.TypeParameters.Generics()}}({{args}})
+                {{method.ReturnType()}} {{target.FullTypeName}}.{{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(null, false)}})
+                    => {{privateName}}.{{method.Name.MakeGeneric(method.TypeParameters)}}({{args}});
 
                 private {{uniqueMethodName}}MethodMock {{privateName}} = new();
-                public {{uniqueMethodName}}MethodMock.ReturnValues {{method.Name}}{{generics}}({{parameters.ArgWrappers()}})
+                public {{uniqueMethodName}}MethodMock.ReturnValues.{{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} {{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.ArgWrappers()}})
                 {
                     {{Matcher(method, uniqueMethodName, inParameters)}}
-                    return new {{uniqueMethodName}}MethodMock.ReturnValues(matcher, {{privateName}});
+                    var returnValues = new {{uniqueMethodName}}MethodMock.ReturnValues(matcher, {{privateName}});
+                    return new {{uniqueMethodName}}MethodMock.ReturnValues.{{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}}(returnValues);
                 }
 
                 public sealed class {{uniqueMethodName}}MethodMock
                 {
                     private readonly List<{{uniqueMethodName}}Call> _calls = [];
                     private readonly List<ReturnValues> _returnValues = [];
-                    
+
                     internal int Calls(Matcher matcher) => _calls.Count(call => call.Matches(matcher));
 
-                    internal {{method.ReturnType()}} {{method.Name}}{{generics}}({{parameters.Parameters(null)}})
+                    internal {{method.ReturnType()}} {{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(null)}})
                     {
                         {{string.Join("\n",
                             parameters.Where(x => x.RefKind != RefKind.None).Select(param =>
                                 $"{param.Name} = null!;"
                             )
                         )}}
-                    
+
                         var call = new {{uniqueMethodName}}Call
                         {
                             {{string.Join(",\n",
                                 inParameters
                                     .Select(x => (PropName: x.Name, ParamName: x.Name))
                                     .Concat(method.TypeParameters.Select((x, i) => (PropName: $"{x.Name.ToLower()}{i}", ParamName: $"typeof({x.Name})")))
-                                    .Select(x => $"{x.PropName} = {x.ParamName}"))
-                            }}
+                                    .Select(x => $"{x.PropName} = {x.ParamName}"))}}
                         };
                         _calls.Add(call);
                         int? index = null;
@@ -104,15 +100,15 @@ internal static class MethodMock
                         {
                             var returnValues = _returnValues[i];
 
-                            if (!returnValues.Matches{{generics}}({{inParameters.Args(null)}}))
+                            if (!returnValues.{{"Matches".MakeGeneric(method.TypeParameters)}}({{inParameters.Args(null)}}))
                                 continue;
-                                
+
                             if (returnValues.OnCallsRange is null)
                             {
                                 index = i;
                                 continue;
                             }
-                                
+
                             if (returnValues.OnCallsRange.Value.Start.Value > _calls.Count)
                                 continue;
 
@@ -128,23 +124,20 @@ internal static class MethodMock
                             method.ReturnsVoid
                                 ? "if (index is not null)"
                                 : "return index is null ? default!: "
-                        )}} _returnValues[index.Value].Value({{args}});
+                        )}} _returnValues[index.Value].{{"Value".MakeGeneric(method.TypeParameters)}}({{args}});
                     }
 
                     {{Delegates(method, parameters, inParameters)}}
                     {{ReturnValues.MockReturnValues(
                     method,
                     uniqueMethodName,
-                    generics,
                     parameters,
-                    inParameters,
-                    args,
-                    method.ReturnsVoid
+                    inParameters
                 )}}
                     {{ReturnValue.MockReturnValue(method, parameters)}}
                     {{Call.MockCall(method, uniqueMethodName, inParameters)}}
                 }
-                #endregion {{method.Name}}{{generics}}({{args}})
+                #endregion {{method.Name}}{{method.TypeParameters.Generics()}}({{args}})
                 """;
             methods[i] = source;
         }

@@ -13,15 +13,21 @@ internal static class ReturnValue
         $$"""
             internal readonly record struct ReturnValue
             {
-                private readonly Signature _value;
+                private readonly ReturnValueSignature _value;
 
-                public ReturnValue(Signature value)
+                public ReturnValue(ReturnValueSignature value)
                 {
                     _value = value;
                 }
 
-                public {{method.ReturnType()}} Value({{parameters.Parameters(null)}})
+                public {{method.ReturnType(true)}} Value({{parameters.Parameters(
+                method,
+                replaceGenericsWithObject: true,
+                includeTypeParams: false
+            )}})
                     => _value({{parameters.Args(null)}});
+                    
+                public delegate {{method.ReturnType(true)}} ReturnValueSignature({{parameters.Parameters(method, replaceGenericsWithObject: true, includeTypeParams: false)}});
             }
             """;
 }

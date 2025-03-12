@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using QuicMoc.Models;
@@ -14,7 +14,9 @@ internal static class Call
     )
     {
         var props = parameters
-            .Select(param => (Type: param.Type.Name, Name: param.Name))
+            .Select(param =>
+                (Type: param.Type.IsGeneric(method) ? "object" : param.Type.Name, param.Name)
+            )
             .Concat(
                 method.TypeParameters.Select(
                     (param, i) => (Type: "Type", Name: $"{param.Name.ToLower()}{i}")
@@ -27,7 +29,7 @@ internal static class Call
                  {{string.Join("\n", props.Select(prop =>
                      $"public required {prop.Type} {prop.Name} {{ get; init; }}"
                  ))}}
-                     
+
                  public bool Matches(Matcher matcher) =>
                     matcher({{string.Join(", ", props.Select(param => param.Name))}});
              }

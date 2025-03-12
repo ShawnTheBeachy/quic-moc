@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -41,6 +41,38 @@ internal sealed record Parameter
 
 internal static class ParameterExtensions
 {
+    public static string Args(
+        this IEnumerable<Parameter> parameters,
+        IMethodSymbol? method,
+        string? suffix = null,
+        bool includeTypes = false,
+        bool replaceGenericsWithObject = false,
+        bool includeTypeParams = true
+    ) =>
+        string.Join(
+            ", ",
+            parameters
+                .Select(x =>
+                    $"{x.Ref()}{(includeTypes ? $"{(replaceGenericsWithObject && method is not null && x.Type.IsGeneric(method) ? "object?" : x.Type.Name)} " : "")}{x.Name}{suffix}"
+                )
+                .Concat(
+                    includeTypeParams && method is not null
+                        ? method.TypeParameters.Select(param => $"typeof({param.Name})")
+                        : []
+                )
+        );
+
+    public static string ArgsWithGenericCasts(
+        this IEnumerable<Parameter> parameters,
+        IMethodSymbol method
+    ) =>
+        string.Join(
+            ", ",
+            parameters.Select(x =>
+                $"{x.Ref()}{(x.Type.IsGeneric(method) ? $"({x.Type})" : "")}{x.Name}"
+            )
+        );
+
     public static string ArgWrappers(this IEnumerable<Parameter> parameters) =>
         string.Join(
             ", ",
@@ -49,43 +81,33 @@ internal static class ParameterExtensions
             )
         );
 
-    public static string Args(
-        this IEnumerable<Parameter> parameters,
-        IMethodSymbol? method,
-        string? suffix = null
-    ) =>
-        string.Join(
-            ", ",
-            parameters
-                .Select(x => $"{x.Ref()}{x.Name}{suffix}")
-                .Concat(method?.TypeParameters.Select(param => $"typeof({param.Name})") ?? [])
-        );
-
     public static string Parameters(
         this IEnumerable<Parameter> parameters,
         IMethodSymbol? method,
-        bool includeDefaults = true
+        bool includeDefaults = true,
+        bool replaceGenericsWithObject = false,
+        bool includeTypeParams = true
     ) =>
         string.Join(
             ", ",
             parameters
                 .Select(x =>
                     (
-                        Type: $"{x.Ref()}{x.Type}{(x.IsNullable ? "?" : "")}",
+                        Type: $"{x.Ref()}{(!replaceGenericsWithObject || method is null ? x.Type.Name : x.Type.IsGeneric(method) ? "object?" : x.Type.Name)}{(x.IsNullable ? "?" : "")}",
                         Name: $"{x.Name}{(includeDefaults && x.DefaultValue is not null ? $" = {x.DefaultValue}" : "")}"
                     )
                 )
                 .Concat(
-                    method is null
-                        ? []
-                        : Enumerable
+                    includeTypeParams && method is not null
+                        ? Enumerable
                             .Repeat("Type", method.Arity)
                             .Select((x, i) => (Type: x, Name: $"t{i}"))
+                        : []
                 )
                 .Select(x => $"{x.Type} {x.Name}")
         );
 
-    private static string Ref(this Parameter parameter) =>
+    public static string Ref(this Parameter parameter) =>
         parameter.RefKind switch
         {
             RefKind.In => "in ",
