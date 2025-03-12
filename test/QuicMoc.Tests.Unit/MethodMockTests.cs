@@ -24,6 +24,23 @@ public sealed class MethodMockTests
     }
 
     [Test]
+    public async Task Type_ShouldBeFullyQualified_WhenCustomType()
+    {
+        // Arrange.
+        var mock = new Mock<IMethodMockTests>().Quick();
+        mock.Greet(Arg<Person>.Any()).Returns(person => $"Hello, {person.Name}!");
+
+        // Act.
+        IMethodMockTests sut = mock;
+        sut.Greet<Person>("Hello", out var foo);
+
+        // Assert.
+        using var asserts = Assert.Multiple();
+        await Assert.That(foo).IsEqualTo("foo");
+        await Assert.That(mock.Greet<Person>().Calls).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task DifferentValues_ShouldBeReturned_WhenMultipleValuesArePassedToReturns()
     {
         // Arrange.
@@ -210,5 +227,8 @@ internal interface IMethodMockTests
     TR Convert<T, TR>(T value);
     void Greet<T>(string name, out string greeting);
     string Greet();
+    string Greet(Person person);
     string Greet(string name);
 }
+
+public sealed record Person(string Name);

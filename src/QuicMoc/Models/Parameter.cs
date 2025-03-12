@@ -53,7 +53,7 @@ internal static class ParameterExtensions
             ", ",
             parameters
                 .Select(x =>
-                    $"{x.Ref()}{(includeTypes ? $"{(replaceGenericsWithObject && method is not null && x.Type.IsGeneric(method) ? "object?" : x.Type.Name)} " : "")}{x.Name}{suffix}"
+                    $"{x.Ref()}{(includeTypes ? $"{(replaceGenericsWithObject && method is not null && x.Type.IsGeneric(method) ? "object?" : x.Type.FullyQualifiedName(method))} " : "")}{x.Name}{suffix}"
                 )
                 .Concat(
                     includeTypeParams && method is not null
@@ -69,17 +69,25 @@ internal static class ParameterExtensions
         string.Join(
             ", ",
             parameters.Select(x =>
-                $"{x.Ref()}{(x.Type.IsGeneric(method) ? $"({x.Type})" : "")}{x.Name}"
+                $"{x.Ref()}{(x.Type.IsGeneric(method) ? $"({x.Type.FullyQualifiedName(method)})" : "")}{x.Name}"
             )
         );
 
-    public static string ArgWrappers(this IEnumerable<Parameter> parameters) =>
+    public static string ArgWrappers(
+        this IEnumerable<Parameter> parameters,
+        IMethodSymbol method
+    ) =>
         string.Join(
             ", ",
             parameters.Select(x =>
-                $"Arg<{x.Type}{(x.IsNullable ? "?" : "")}>? {x.Name} = {x.DefaultValue ?? "null"}"
+                $"Arg<{x.Type.FullyQualifiedName(method)}{(x.IsNullable ? "?" : "")}>? {x.Name} = {x.DefaultValue ?? "null"}"
             )
         );
+
+    public static string FullyQualifiedName(this ITypeSymbol type, IMethodSymbol? method) =>
+        method is not null && type.IsGeneric(method)
+            ? type.Name
+            : $"global::{type.ContainingNamespace}.{type.Name}";
 
     public static string Parameters(
         this IEnumerable<Parameter> parameters,
@@ -93,7 +101,7 @@ internal static class ParameterExtensions
             parameters
                 .Select(x =>
                     (
-                        Type: $"{x.Ref()}{(!replaceGenericsWithObject || method is null ? x.Type.Name : x.Type.IsGeneric(method) ? "object?" : x.Type.Name)}{(x.IsNullable ? "?" : "")}",
+                        Type: $"{x.Ref()}{(!replaceGenericsWithObject || method is null ? x.Type.FullyQualifiedName(method) : x.Type.IsGeneric(method) ? "object?" : x.Type.FullyQualifiedName(method))}{(x.IsNullable ? "?" : "")}",
                         Name: $"{x.Name}{(includeDefaults && x.DefaultValue is not null ? $" = {x.DefaultValue}" : "")}"
                     )
                 )

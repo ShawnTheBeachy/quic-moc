@@ -31,11 +31,11 @@ internal static class ReturnValues
 
              public int Calls => _methodMock.Calls(_matcher);
 
-             public bool {{"Matches".MakeGeneric(method.TypeParameters)}}({{inParameters.Parameters(null)}}) => _matcher({{inParameters.Args(method)}});
+             public bool {{"Matches".MakeGeneric(method.TypeParameters)}}({{inParameters.Parameters(method, true, false, false)}}) => _matcher({{inParameters.Args(method)}});
 
              public void OnCalls(Range range) => OnCallsRange = range;
 
-             public {{method.ReturnType()}} {{"Value".MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(null)}})
+             public {{method.ReturnType()}} {{"Value".MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(method, true, false, false)}})
              {
                 var index = 0;
 
