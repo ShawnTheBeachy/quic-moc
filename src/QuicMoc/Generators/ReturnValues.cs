@@ -19,7 +19,7 @@ internal static class ReturnValues
              private int _calls;
              private readonly Matcher _matcher;
              private readonly {{methodName}}MethodMock _methodMock;
-             private readonly List<ReturnValue> _items = [];
+             public List<ReturnValue> Items { get; } = [];
              public Range? OnCallsRange { get; private set; }
 
              public ReturnValues(Matcher matcher, {{methodName}}MethodMock methodMock)
@@ -39,7 +39,7 @@ internal static class ReturnValues
              {
                 var index = 0;
 
-                for (var i = 0; i < _items.Count; i++)
+                for (var i = 0; i < Items.Count; i++)
                 {
                    if (i > _calls)
                        break;
@@ -49,7 +49,7 @@ internal static class ReturnValues
 
                 _calls++;
                 {{(method.ReturnsVoid ? "" : $"return {(method.ReturnType.IsGeneric(method) ? $"({method.ReturnType})" : "")}")}}
-                    _items[index].Value({{string.Join(", ", parameters.Select(x => $"{x.Ref()} {x.Name}"))}});
+                    Items[index].Value({{string.Join(", ", parameters.Select(x => $"{x.Ref()} {x.Name}"))}});
              }
         }
         
@@ -77,7 +77,7 @@ internal static class ReturnValues
                             )}}
                         {{(method.ReturnsVoid ? "returnValue()" : "return returnValue")}};
                    });
-                   _returnValues._items.Add(rv);
+                   _returnValues.Items.Add(rv);
                 }
                 
                 return this;
@@ -89,7 +89,7 @@ internal static class ReturnValues
                 {
                     var rv = new ReturnValue(({{parameters.Args(method, includeTypes: true, includeTypeParams: false, replaceGenericsWithObject: true)}}) =>
                        returnValue({{parameters.ArgsWithGenericCasts(method)}}));
-                    _returnValues._items.Add(rv);
+                    _returnValues.Items.Add(rv);
                 }
         
                 return this;
