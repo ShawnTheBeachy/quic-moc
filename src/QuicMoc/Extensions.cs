@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using QuicMoc.Models;
 
 namespace QuicMoc;
 
@@ -23,5 +24,5 @@ internal static class Extensions
     ) =>
         method.ReturnsVoid ? "void"
         : replaceGenericWithObject && method.ReturnType.IsGeneric(method) ? "object"
-        : method.ReturnType.Name;
+        : method.ReturnType.FullyQualifiedName(method);
 }

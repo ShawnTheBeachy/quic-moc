@@ -16,7 +16,7 @@ internal static class MethodMock
         public delegate bool Matcher({inParameters.Parameters(method, replaceGenericsWithObject: true)});
         public delegate {method.ReturnType()} {"Signature".MakeGeneric(
             method.TypeParameters
-        )}({parameters.Parameters(null)});
+        )}({parameters.Parameters(method, true, false, false)});
         """;
 
     private static string Matcher(
@@ -59,11 +59,11 @@ internal static class MethodMock
                 $"_{uniqueMethodName[0].ToString().ToLower()}{uniqueMethodName.Substring(1)}";
             var source = $$"""
                 #region {{method.Name}}{{method.TypeParameters.Generics()}}({{args}})
-                {{method.ReturnType()}} {{target.FullTypeName}}.{{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(null, false)}})
+                {{method.ReturnType()}} {{target.FullTypeName}}.{{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(method, true, false, false)}})
                     => {{privateName}}.{{method.Name.MakeGeneric(method.TypeParameters)}}({{args}});
 
                 private {{uniqueMethodName}}MethodMock {{privateName}} = new();
-                public {{uniqueMethodName}}MethodMock.{{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} {{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.ArgWrappers()}})
+                public {{uniqueMethodName}}MethodMock.{{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} {{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.ArgWrappers(method)}})
                 {
                     {{Matcher(method, uniqueMethodName, inParameters)}}
                     var returnValues = new {{uniqueMethodName}}MethodMock.ReturnValues(matcher, {{privateName}});
@@ -77,7 +77,7 @@ internal static class MethodMock
 
                     internal int Calls(Matcher matcher) => _calls.Count(call => call.Matches(matcher));
 
-                    internal {{method.ReturnType()}} {{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(null)}})
+                    internal {{method.ReturnType()}} {{method.Name.MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(method, true, false, false)}})
                     {
                         {{string.Join("\n",
                             parameters.Where(x => x.RefKind != RefKind.None).Select(param =>

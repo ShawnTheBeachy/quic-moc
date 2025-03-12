@@ -203,6 +203,23 @@ public sealed class MethodMockTests
         // Assert.
         await Assert.That(greeting).IsEqualTo("foo");
     }
+
+    [Test]
+    public async Task Type_ShouldBeFullyQualified_WhenCustomType()
+    {
+        // Arrange.
+        var mock = new Mock<IMethodMockTests>().Quick();
+        mock.Greet(Arg<Person>.Any()).Returns(person => $"Hello, {person.Name}!");
+
+        // Act.
+        IMethodMockTests sut = mock;
+        var greeting = sut.Greet(new Person("Foo"));
+
+        // Assert.
+        using var asserts = Assert.Multiple();
+        await Assert.That(greeting).IsEqualTo("Hello, Foo!");
+        await Assert.That(mock.Greet(Arg<Person>.Any()).Calls).IsEqualTo(1);
+    }
 }
 
 internal interface IMethodMockTests
@@ -210,5 +227,8 @@ internal interface IMethodMockTests
     TR Convert<T, TR>(T value);
     void Greet<T>(string name, out string greeting);
     string Greet();
+    string Greet(Person person);
     string Greet(string name);
 }
+
+public sealed record Person(string Name);

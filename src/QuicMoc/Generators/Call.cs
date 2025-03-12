@@ -15,7 +15,12 @@ internal static class Call
     {
         var props = parameters
             .Select(param =>
-                (Type: param.Type.IsGeneric(method) ? "object" : param.Type.Name, param.Name)
+                (
+                    Type: param.Type.IsGeneric(method)
+                        ? "object"
+                        : param.Type.FullyQualifiedName(method),
+                    param.Name
+                )
             )
             .Concat(
                 method.TypeParameters.Select(
