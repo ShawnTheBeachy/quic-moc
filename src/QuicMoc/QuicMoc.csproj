@@ -6,6 +6,24 @@
     <LangVersion>latest</LangVersion>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsRoslynComponent>true</IsRoslynComponent>
+    <DebugType>embedded</DebugType>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <Deterministic>true</Deterministic>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageId>asdfDEV.QuicMoc</PackageId>
+    <Authors>ShawnSeanShaun</Authors>
+    <Company>asdfDEV</Company>
+    <PackageDescription>A fast, light mocking package for .NET.</PackageDescription>
+    <RepositoryUrl>https://github.com/ShawnTheBeachy/quic-moc</RepositoryUrl>
+    <PublishRepositoryUrl>false</PublishRepositoryUrl>
+    <PackageProjectUrl>https://github.com/ShawnTheBeachy/quic-moc</PackageProjectUrl>
+    <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+    <PackageTags>.net;mocking;testing;</PackageTags>
+    <PackageIcon>assets/nuget-package-icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +32,10 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0"/>
+    <PackageReference Include="MinVer" Version="6.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"/>
   </ItemGroup>
 
@@ -27,5 +49,18 @@
     <ItemGroup>
     </ItemGroup>
   </Target>
+
+  <ItemGroup>
+    <Content Include="..\..\README.md">
+      <Link>.nuget\%(FileName)%(Extension)</Link>
+      <Pack>true</Pack>
+      <PackagePath>README.md</PackagePath>
+    </Content>
+    <Content Include="..\..\assets\nuget-package-icon.png">
+      <Link>.nuget\%(FileName)%(Extension)</Link>
+      <Pack>true</Pack>
+      <PackagePath>/assets/nuget-package-icon.png</PackagePath>
+    </Content>
+  </ItemGroup>
 
 </Project>

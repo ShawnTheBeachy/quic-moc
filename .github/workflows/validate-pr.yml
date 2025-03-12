@@ -1,0 +1,53 @@
+name: Validate PR
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  check_formatting:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          dotnet tool restore
+          dotnet csharpier --check .
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: [ '9.x' ]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up .NET SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Cache packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: ${{ runner.os }}-nuget
+      - name: Install dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --configuration Debug --no-restore
+      - name: Test
+        run: |
+          dotnet exec test/QuicMoc.Tests.Unit/bin/Debug/net9.0/QuicMoc.Tests.Unit.dll --coverage --coverage-output-format cobertura --crashdump --hangdump
+      - name: Generate code coverage report
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:"test/**/TestResults/**/*.cobertura.xml" -targetdir:"test/coverage-report" -filefilters:"-*.g.cs" -assemblyfilters:"-QuicMoc*.Tests.*"
+      - name: Upload code coverage report
+        uses: actions/upload-artifact@v4
+        if: '!cancelled()'
+        with:
+          name: coverage-report
+          path: test/coverage-report/
+          retention-days: 1
+    env:
+      DescribeTests: false
+      TESTINGPLATFORM_TELEMETRY_OPTOUT: 1
