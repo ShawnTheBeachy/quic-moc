@@ -20,14 +20,14 @@ internal static class ReturnValue
         textWriter.EndBlock();
         textWriter.WriteLineNoTabs("");
         textWriter.WriteLine(
-            $"public {(method.ReturnTypeIsGeneric ? "object?" : method.ReturnType)} Value({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Join(", ")})"
+            $"public {(method.ReturnTypeIsGeneric || method.ReturnTypeArity > 0 ? "object?" : method.ReturnType)} Value({method.Parameters.Select(x => x.ToString(x.NonGenericOrObject())).Join(", ")})"
         );
         textWriter.WriteLineIndented(
             $"=> _value({method.Parameters.Select(x => $"{x.Ref()}{x.Name}").Join(", ")});"
         );
         textWriter.WriteLineNoTabs("");
         textWriter.WriteLine(
-            $"public delegate {(method.ReturnTypeIsGeneric ? "object?" : method.ReturnType)} ReturnValueSignature({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Join(", ")});"
+            $"public delegate {(method.ReturnTypeIsGeneric || method.ReturnTypeArity > 0 ? "object?" : method.ReturnType)} ReturnValueSignature({method.Parameters.Select(x => x.ToString(x.NonGenericOrObject())).Join(", ")});"
         );
         textWriter.EndBlock();
     }

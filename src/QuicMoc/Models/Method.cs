@@ -17,6 +17,7 @@ internal sealed record Method
     public EquatableArray<Parameter> Parameters { get; }
     public bool ReturnsVoid { get; }
     public string ReturnType { get; }
+    public int ReturnTypeArity { get; }
     public bool ReturnTypeIsGeneric =>
         !TypeParameters.IsDefaultOrEmpty && TypeParameters.Contains(ReturnType);
     public EquatableArray<string> TypeParameters { get; }
@@ -34,6 +35,7 @@ internal sealed record Method
 
         Parameters = parameters.ToImmutableArray();
         ReturnsVoid = symbol.ReturnsVoid;
+        ReturnTypeArity = symbol.ReturnType is INamedTypeSymbol nts ? nts.Arity : 0;
         ReturnType = symbol.ReturnsVoid ? "void" : symbol.ReturnType.ToDisplayString();
         TypeParameters = symbol.TypeParameters.Select(x => x.ToDisplayString()).ToImmutableArray();
     }

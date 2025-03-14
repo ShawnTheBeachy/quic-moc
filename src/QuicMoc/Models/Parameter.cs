@@ -6,11 +6,11 @@ namespace QuicMoc.Models;
 
 internal sealed record Parameter
 {
+    private readonly string? _defaultValue;
     private readonly Method _method;
-    public string? DefaultValue { get; }
+    public int Arity { get; }
     public bool IsGeneric =>
         !_method.TypeParameters.IsDefaultOrEmpty && _method.TypeParameters.Contains(Type);
-    public bool IsNullable { get; }
     public bool IsOut => RefKind == RefKind.Out;
     public string Name { get; }
     public RefKind RefKind { get; }
@@ -19,7 +19,7 @@ internal sealed record Parameter
     public Parameter(IParameterSymbol symbol, Method method)
     {
         _method = method;
-        IsNullable = symbol.NullableAnnotation == NullableAnnotation.Annotated;
+        Arity = symbol.Type is INamedTypeSymbol nts ? nts.Arity : 0;
         Name = symbol.Name;
         RefKind = symbol.RefKind;
         Type = symbol.Type.ToDisplayString();
@@ -38,7 +38,7 @@ internal sealed record Parameter
             return;
 
         if (parameterSyntax.Default is not null)
-            DefaultValue = parameterSyntax.Default.Value.GetText().ToString();
+            _defaultValue = parameterSyntax.Default.Value.GetText().ToString();
     }
 
     private string Ref() =>
@@ -51,7 +51,7 @@ internal sealed record Parameter
         };
 
     public string ToString(string overrideTypeName) =>
-        $"{Ref()}{overrideTypeName} {Name}{(DefaultValue is null ? "" : $" = {DefaultValue}")}";
+        $"{Ref()}{overrideTypeName} {Name}{(_defaultValue is null ? "" : $" = {_defaultValue}")}";
 
     public override string ToString() => ToString(Type);
 }

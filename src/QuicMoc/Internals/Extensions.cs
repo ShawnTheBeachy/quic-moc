@@ -1,6 +1,5 @@
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using QuicMoc.Models;
 
@@ -19,6 +18,9 @@ internal static class Extensions
 
     public static string Join(this IEnumerable<string> items, string separator) =>
         string.Join(separator, items);
+
+    public static string NonGenericOrObject(this Parameter parameter) =>
+        parameter.IsGeneric || parameter.Arity > 0 ? "object?" : parameter.Type;
 
     public static string Ref(this Parameter parameter) =>
         parameter.RefKind switch

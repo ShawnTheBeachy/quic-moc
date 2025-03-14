@@ -11,7 +11,7 @@ internal static class MethodMock
     {
         textWriter.WriteLineNoTabs("");
         textWriter.WriteLine(
-            $"public delegate bool Matcher({method.Parameters.Where(x => !x.IsOut).Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Concat(method.TypeParameters.Select(x => $"Type {x.ToLowerInvariant()}")).Join(", ")});"
+            $"public delegate bool Matcher({method.Parameters.Where(x => !x.IsOut).Select(x => x.ToString(x.NonGenericOrObject())).Concat(method.TypeParameters.Select(x => $"Type {x.ToLowerInvariant()}")).Join(", ")});"
         );
         textWriter.WriteLine(
             $"public delegate {method.ReturnType} Signature{method.TypeParameters.Generics()}({method.Parameters.Select(x => x.ToString()).Join(", ")});"

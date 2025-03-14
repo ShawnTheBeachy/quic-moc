@@ -1,6 +1,5 @@
 using System.CodeDom.Compiler;
 using System.Linq;
-using Microsoft.CodeAnalysis;
 using QuicMoc.Internals;
 using QuicMoc.Models;
 
@@ -102,7 +101,7 @@ internal static class ReturnValues
         textWriter.WriteLine("foreach (var returnValue in returnValues)");
         textWriter.StartBlock();
         textWriter.WriteLine(
-            $"var rv = new ReturnValue(({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Join(", ")}) =>"
+            $"var rv = new ReturnValue(({method.Parameters.Select(x => x.ToString(x.NonGenericOrObject())).Join(", ")}) =>"
         );
         textWriter.StartBlock();
         method.GenerateOutSetters(textWriter);
@@ -122,10 +121,10 @@ internal static class ReturnValues
         textWriter.WriteLine("foreach (var returnValue in returnValues)");
         textWriter.StartBlock();
         textWriter.WriteLine(
-            $"var rv = new ReturnValue(({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Join(", ")})"
+            $"var rv = new ReturnValue(({method.Parameters.Select(x => x.ToString(x.NonGenericOrObject())).Join(", ")})"
         );
         textWriter.WriteLineIndented(
-            $"=> returnValue({method.Parameters.Select(x => $"{x.Ref()}{(x.IsGeneric ? $"({x.Type})" : "")}{x.Name}").Join(", ")}{(method is { ReturnsVoid: false, Arity: > 0 } ? "!" : "")}));"
+            $"=> returnValue({method.Parameters.Select(x => $"{x.Ref()}{(x.IsGeneric || x.Arity > 0 ? $"({x.Type})" : "")}{x.Name}").Join(", ")}{(method is { ReturnsVoid: false, Arity: > 0 } ? "!" : "")}));"
         );
         textWriter.WriteLine("_returnValues.Items.Add(rv);");
         textWriter.EndBlock();

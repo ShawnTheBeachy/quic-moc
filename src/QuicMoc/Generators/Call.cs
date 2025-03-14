@@ -15,7 +15,7 @@ internal static class Call
             .Parameters.Where(x => !x.IsOut)
             .Select(x =>
                 (
-                    Type: x.IsGeneric ? "object?" : x.Type,
+                    Type: x.NonGenericOrObject(),
                     Name: $"{char.ToUpperInvariant(x.Name[0])}{x.Name.Substring(1)}"
                 )
             )

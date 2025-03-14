@@ -6,21 +6,18 @@ public sealed class MethodMockTests
     public async Task Calls_ShouldReturnNumberOfCalls_WhenCallsMatch()
     {
         // Arrange.
-        var mock = new Mock<IMethodMockTests>().Quick();
-        mock.Greet("foo").Returns("foo");
-        mock.Greet("bar").Returns("bar");
+        var mock = new Mock<IConfigure>().Quick();
 
         // Act.
-        IMethodMockTests sut = mock;
-        sut.Greet("");
-        sut.Greet("foo");
-        sut.Greet("bar");
-        sut.Greet("bar");
+        IConfigure sut = mock;
+        sut.Setup<string>(x => x);
+        sut.Setup<int>(x => x);
+        sut.Setup<int>(x => x);
 
         // Assert.
         using var asserts = Assert.Multiple();
-        await Assert.That(mock.Greet("foo").Calls).IsEqualTo(1);
-        await Assert.That(mock.Greet("bar").Calls).IsEqualTo(2);
+        await Assert.That(mock.Setup<string>().Calls).IsEqualTo(1);
+        await Assert.That(mock.Setup<int>().Calls).IsEqualTo(2);
     }
 
     [Test]
@@ -238,6 +235,11 @@ public sealed class MethodMockTests
         await Assert.That(greeting).IsEqualTo("Hello, Foo!");
         await Assert.That(mock.Greet(Arg<Person>.Any()).Calls).IsEqualTo(1);
     }
+}
+
+internal interface IConfigure
+{
+    void Setup<T>(Func<T, T> configure);
 }
 
 internal interface IConverter

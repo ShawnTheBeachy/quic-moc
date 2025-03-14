@@ -22,7 +22,7 @@ public sealed class Tests
     public interface IFoo
     {
         string Greeting { get; }
-        string Greet<T>(T person, string? lastName = null, out string prefix);
+        string Greet<T>(Action<T> act);
     }
 }
 ";
