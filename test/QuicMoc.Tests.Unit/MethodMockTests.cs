@@ -68,10 +68,10 @@ public sealed class MethodMockTests
     public async Task Generic_ShouldMatch_WhenAnyType()
     {
         // Arrange.
-        var mock = new Mock<IMethodMockTests>().Quick();
+        var mock = new Mock<IConverter>().Quick();
 
         // Act.
-        IMethodMockTests sut = mock;
+        IConverter sut = mock;
         var value1 = sut.Convert<string, int>("");
         var value2 = sut.Convert<int, string>(0);
 
@@ -86,11 +86,11 @@ public sealed class MethodMockTests
     public async Task Generic_ShouldMatch_WhenSameGeneric()
     {
         // Arrange.
-        var mock = new Mock<IMethodMockTests>().Quick();
+        var mock = new Mock<IConverter>().Quick();
         mock.Convert<int, string>().Returns(x => x.ToString());
 
         // Act.
-        IMethodMockTests sut = mock;
+        IConverter sut = mock;
         var converted = sut.Convert<int, string>(3);
 
         // Assert.
@@ -103,11 +103,11 @@ public sealed class MethodMockTests
     public async Task Generic_ShouldNotMatch_WhenDifferentGeneric()
     {
         // Arrange.
-        var mock = new Mock<IMethodMockTests>().Quick();
+        var mock = new Mock<IConverter>().Quick();
         mock.Convert<int, double>().Returns(x => x);
 
         // Act.
-        IMethodMockTests sut = mock;
+        IConverter sut = mock;
         var converted = sut.Convert<int, string>(3);
 
         // Assert.
@@ -115,6 +115,24 @@ public sealed class MethodMockTests
         await Assert.That(converted).IsNull();
         await Assert.That(mock.Convert<int, string>().Calls).IsEqualTo(1);
         await Assert.That(mock.Convert<string, int>().Calls).IsEqualTo(0);
+    }
+
+    [Test]
+    public async Task Generic_ShouldWork_WhenTypesAreNullable()
+    {
+        // Arrange.
+        var mock = new Mock<IConverter>().Quick();
+        mock.Convert<int?, string?>().Returns(x => x?.ToString());
+
+        // Act.
+        IConverter sut = mock;
+        var converted = sut.Convert<int?, string?>(null);
+
+        // Assert.
+        using var asserts = Assert.Multiple();
+        await Assert.That(converted).IsNull();
+        await Assert.That(mock.Convert<int?, string?>().Calls).IsEqualTo(1);
+        await Assert.That(mock.Convert<int, string>().Calls).IsZero();
     }
 
     [Test]
@@ -222,9 +240,13 @@ public sealed class MethodMockTests
     }
 }
 
-internal interface IMethodMockTests
+internal interface IConverter
 {
     TR Convert<T, TR>(T value);
+}
+
+internal interface IMethodMockTests
+{
     void Greet<T>(string name, out string greeting);
     string Greet();
     string Greet(Person person);

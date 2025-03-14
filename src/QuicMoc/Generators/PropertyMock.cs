@@ -29,8 +29,10 @@ internal static class PropertyMock
             );
             textWriter.WriteLine($"public {prop.Type} {prop.Name}");
             textWriter.StartBlock();
-            textWriter.WriteLine($"get => {privateName};");
-            textWriter.WriteLine($"set => {privateName} = value;");
+            textWriter.WriteLine($"get => {privateName}{(prop.IsInterface ? ".Get()" : "")};");
+            textWriter.WriteLine(
+                $"set => {privateName}{(prop.IsInterface ? ".Set(value)" : " = value")};"
+            );
             textWriter.EndBlock();
             textWriter.WriteLineNoTabs("");
             textWriter.WriteLine($"#endregion {prop.Name}");

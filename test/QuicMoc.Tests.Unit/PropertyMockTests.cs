@@ -3,6 +3,21 @@
 public sealed class PropertyMockTests
 {
     [Test]
+    public async Task GetAndSetProperty_ShouldWork_WhenPropertyIsMock()
+    {
+        // Arrange.
+        var mock = new Mock<IPropertyMockTests>().Quick();
+        var foo = new Mock<IFoo>().Quick();
+        mock.Foo = foo;
+
+        // Act.
+        var gotFoo = mock.Foo;
+
+        // Assert.
+        await Assert.That(gotFoo).IsSameReferenceAs(foo);
+    }
+
+    [Test]
     public async Task SetProperty_ShouldWork_WhenPropertyIsGetOnly()
     {
         // Arrange.
@@ -31,6 +46,9 @@ public sealed class PropertyMockTests
 
 internal interface IPropertyMockTests
 {
+    IFoo Foo { get; set; }
     string GetOnly { get; }
     string Settable { get; set; }
 }
+
+internal interface IFoo;

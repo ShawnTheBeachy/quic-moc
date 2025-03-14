@@ -37,7 +37,7 @@ public sealed class MocksGenerator : IIncrementalGenerator
 
                 namespace {Constants.Namespace};
 
-                public sealed class MockFor{target.Name} : {target.Type}
+                internal sealed class MockFor{target.Name} : {target.Type}
                 """
             );
             textWriter.WriteLine();

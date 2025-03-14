@@ -1,5 +1,6 @@
 using System.CodeDom.Compiler;
 using System.Linq;
+using Microsoft.CodeAnalysis;
 using QuicMoc.Internals;
 using QuicMoc.Models;
 
@@ -63,7 +64,7 @@ internal static class ReturnValues
         textWriter.WriteLine("_calls++;");
 
         textWriter.WriteLine(
-            $"{(method.ReturnsVoid ? "" : $"return {(method.ReturnTypeIsGeneric ? $"({method.ReturnType})" : "")}")}Items[index].Value({method.Parameters.Select(x => $"{x.Ref()}{x.Name}").Join(", ")});"
+            $"{(method.ReturnsVoid ? "" : $"return {(method.ReturnTypeIsGeneric ? $"({method.ReturnType})" : "")}")}Items[index].Value({method.Parameters.Select(x => $"{x.Ref()}{x.Name}").Join(", ")}){(method is { ReturnsVoid: false, Arity: > 0 } ? "!" : "")};"
         );
 
         textWriter.EndBlock();
@@ -101,7 +102,7 @@ internal static class ReturnValues
         textWriter.WriteLine("foreach (var returnValue in returnValues)");
         textWriter.StartBlock();
         textWriter.WriteLine(
-            $"var rv = new ReturnValue(({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object" : x.Type)).Join(", ")}) =>"
+            $"var rv = new ReturnValue(({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Join(", ")}) =>"
         );
         textWriter.StartBlock();
         method.GenerateOutSetters(textWriter);
@@ -124,7 +125,7 @@ internal static class ReturnValues
             $"var rv = new ReturnValue(({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Join(", ")})"
         );
         textWriter.WriteLineIndented(
-            $"=> returnValue({method.Parameters.Select(x => $"{x.Ref()}{(x.IsGeneric ? $"({x.Type}?)" : "")}{x.Name}").Join(", ")}));"
+            $"=> returnValue({method.Parameters.Select(x => $"{x.Ref()}{(x.IsGeneric ? $"({x.Type})" : "")}{x.Name}").Join(", ")}{(method is { ReturnsVoid: false, Arity: > 0 } ? "!" : "")}));"
         );
         textWriter.WriteLine("_returnValues.Items.Add(rv);");
         textWriter.EndBlock();
