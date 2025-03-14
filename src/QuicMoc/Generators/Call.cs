@@ -1,43 +1,33 @@
-using System.Collections.Generic;
+using System.CodeDom.Compiler;
 using System.Linq;
-using Microsoft.CodeAnalysis;
+using QuicMoc.Internals;
 using QuicMoc.Models;
 
 namespace QuicMoc.Generators;
 
 internal static class Call
 {
-    public static string MockCall(
-        IMethodSymbol method,
-        string methodName,
-        IReadOnlyList<Parameter> parameters
-    )
+    public static void GenerateCall(this Method method, IndentedTextWriter textWriter)
     {
-        var props = parameters
-            .Select(param =>
+        textWriter.WriteLine("internal readonly record struct Call");
+        textWriter.StartBlock();
+        var props = method
+            .Parameters.Where(x => !x.IsOut)
+            .Select(x =>
                 (
-                    Type: param.Type.IsGeneric(method)
-                        ? "object"
-                        : param.Type.FullyQualifiedName(method),
-                    param.Name
+                    Type: x.IsGeneric ? "object?" : x.Type,
+                    Name: $"{char.ToUpperInvariant(x.Name[0])}{x.Name.Substring(1)}"
                 )
             )
-            .Concat(
-                method.TypeParameters.Select(
-                    (param, i) => (Type: "Type", Name: $"{param.Name.ToLower()}{i}")
-                )
-            )
+            .Concat(method.TypeParameters.Select(x => (Type: "Type", Name: $"TypeOf{x}")))
             .ToArray();
-        return $$"""
-             internal readonly record struct {{methodName}}Call
-             {
-                 {{string.Join("\n", props.Select(prop =>
-                     $"public required {prop.Type} {prop.Name} {{ get; init; }}"
-                 ))}}
 
-                 public bool Matches(Matcher matcher) =>
-                    matcher({{string.Join(", ", props.Select(param => param.Name))}});
-             }
-             """;
+        foreach (var prop in props)
+            textWriter.WriteLine($"public required {prop.Type} {prop.Name} {{ get; init; }}");
+
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("public bool Matches(Matcher matcher) =>");
+        textWriter.WriteLineIndented($"matcher({props.Select(x => x.Name).Join(", ")});");
+        textWriter.EndBlock();
     }
 }

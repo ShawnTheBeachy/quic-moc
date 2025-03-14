@@ -41,7 +41,9 @@ internal static class Arg
 
                     internal bool Matches(T other) => _match is null || _match(other);
                     
-                    internal bool Matches(object other) => _match is null || (other is T otherT && _match(otherT));
+                    internal bool Matches(object? other) =>
+                        (_match is null && other is null)
+                        || (other is T otherT && _match(otherT));
 
                     public static Arg<T> Null() => new Arg<T>(x => x is null);
                     

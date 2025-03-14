@@ -1,33 +1,34 @@
-﻿using System.Collections.Generic;
-using Microsoft.CodeAnalysis;
+﻿using System.CodeDom.Compiler;
+using System.Linq;
+using QuicMoc.Internals;
 using QuicMoc.Models;
 
 namespace QuicMoc.Generators;
 
 internal static class ReturnValue
 {
-    public static string MockReturnValue(
-        IMethodSymbol method,
-        IReadOnlyList<Parameter> parameters
-    ) =>
-        $$"""
-            internal readonly record struct ReturnValue
-            {
-                private readonly ReturnValueSignature _value;
-
-                public ReturnValue(ReturnValueSignature value)
-                {
-                    _value = value;
-                }
-
-                public {{method.ReturnType(true)}} Value({{parameters.Parameters(
-                method,
-                replaceGenericsWithObject: true,
-                includeTypeParams: false
-            )}})
-                    => _value({{parameters.Args(null)}});
-                    
-                public delegate {{method.ReturnType(true)}} ReturnValueSignature({{parameters.Parameters(method, replaceGenericsWithObject: true, includeTypeParams: false)}});
-            }
-            """;
+    public static void GenerateReturnValue(this Method method, IndentedTextWriter textWriter)
+    {
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("internal readonly record struct ReturnValue");
+        textWriter.StartBlock();
+        textWriter.WriteLine("private readonly ReturnValueSignature _value;");
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("public ReturnValue(ReturnValueSignature value)");
+        textWriter.StartBlock();
+        textWriter.WriteLine("_value = value;");
+        textWriter.EndBlock();
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine(
+            $"public {(method.ReturnTypeIsGeneric ? "object?" : method.ReturnType)} Value({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Join(", ")})"
+        );
+        textWriter.WriteLineIndented(
+            $"=> _value({method.Parameters.Select(x => $"{x.Ref()}{x.Name}").Join(", ")});"
+        );
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine(
+            $"public delegate {(method.ReturnTypeIsGeneric ? "object?" : method.ReturnType)} ReturnValueSignature({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Join(", ")});"
+        );
+        textWriter.EndBlock();
+    }
 }

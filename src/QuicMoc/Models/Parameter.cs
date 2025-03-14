@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -7,19 +6,23 @@ namespace QuicMoc.Models;
 
 internal sealed record Parameter
 {
+    private readonly Method _method;
     public string? DefaultValue { get; }
+    public bool IsGeneric =>
+        !_method.TypeParameters.IsDefaultOrEmpty && _method.TypeParameters.Contains(Type);
     public bool IsNullable { get; }
     public bool IsOut => RefKind == RefKind.Out;
     public string Name { get; }
     public RefKind RefKind { get; }
-    public ITypeSymbol Type { get; }
+    public string Type { get; }
 
-    public Parameter(IParameterSymbol symbol)
+    public Parameter(IParameterSymbol symbol, Method method)
     {
+        _method = method;
         IsNullable = symbol.NullableAnnotation == NullableAnnotation.Annotated;
         Name = symbol.Name;
         RefKind = symbol.RefKind;
-        Type = symbol.Type;
+        Type = symbol.Type.ToDisplayString();
 
         if (!symbol.HasExplicitDefaultValue)
             return;
@@ -37,90 +40,18 @@ internal sealed record Parameter
         if (parameterSyntax.Default is not null)
             DefaultValue = parameterSyntax.Default.Value.GetText().ToString();
     }
-}
 
-internal static class ParameterExtensions
-{
-    public static string Args(
-        this IEnumerable<Parameter> parameters,
-        IMethodSymbol? method,
-        string? suffix = null,
-        bool includeTypes = false,
-        bool replaceGenericsWithObject = false,
-        bool includeTypeParams = true
-    ) =>
-        string.Join(
-            ", ",
-            parameters
-                .Select(x =>
-                    $"{x.Ref()}{(includeTypes ? $"{(replaceGenericsWithObject && method is not null && x.Type.IsGeneric(method) ? "object?" : x.Type.FullyQualifiedName(method))} " : "")}{x.Name}{suffix}"
-                )
-                .Concat(
-                    includeTypeParams && method is not null
-                        ? method.TypeParameters.Select(param => $"typeof({param.Name})")
-                        : []
-                )
-        );
-
-    public static string ArgsWithGenericCasts(
-        this IEnumerable<Parameter> parameters,
-        IMethodSymbol method
-    ) =>
-        string.Join(
-            ", ",
-            parameters.Select(x =>
-                $"{x.Ref()}{(x.Type.IsGeneric(method) ? $"({x.Type.FullyQualifiedName(method)})" : "")}{x.Name}"
-            )
-        );
-
-    public static string ArgWrappers(
-        this IEnumerable<Parameter> parameters,
-        IMethodSymbol method
-    ) =>
-        string.Join(
-            ", ",
-            parameters.Select(x =>
-                $"Arg<{x.Type.FullyQualifiedName(method)}{(x.IsNullable ? "?" : "")}>? {x.Name} = {x.DefaultValue ?? "null"}"
-            )
-        );
-
-    public static string FullyQualifiedName(this ITypeSymbol type, IMethodSymbol? method) =>
-        method is not null && type.IsGeneric(method)
-            ? type.Name
-            : $"global::{type.ContainingNamespace}.{type.Name}";
-
-    public static string Parameters(
-        this IEnumerable<Parameter> parameters,
-        IMethodSymbol? method,
-        bool includeDefaults = true,
-        bool replaceGenericsWithObject = false,
-        bool includeTypeParams = true
-    ) =>
-        string.Join(
-            ", ",
-            parameters
-                .Select(x =>
-                    (
-                        Type: $"{x.Ref()}{(!replaceGenericsWithObject || method is null ? x.Type.FullyQualifiedName(method) : x.Type.IsGeneric(method) ? "object?" : x.Type.FullyQualifiedName(method))}{(x.IsNullable ? "?" : "")}",
-                        Name: $"{x.Name}{(includeDefaults && x.DefaultValue is not null ? $" = {x.DefaultValue}" : "")}"
-                    )
-                )
-                .Concat(
-                    includeTypeParams && method is not null
-                        ? Enumerable
-                            .Repeat("Type", method.Arity)
-                            .Select((x, i) => (Type: x, Name: $"t{i}"))
-                        : []
-                )
-                .Select(x => $"{x.Type} {x.Name}")
-        );
-
-    public static string Ref(this Parameter parameter) =>
-        parameter.RefKind switch
+    private string Ref() =>
+        RefKind switch
         {
             RefKind.In => "in ",
             RefKind.Out => "out ",
             RefKind.Ref => "ref ",
             _ => "",
         };
+
+    public string ToString(string overrideTypeName) =>
+        $"{Ref()}{overrideTypeName} {Name}{(DefaultValue is null ? "" : $" = {DefaultValue}")}";
+
+    public override string ToString() => ToString(Type);
 }

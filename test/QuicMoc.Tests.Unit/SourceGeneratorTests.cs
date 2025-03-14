@@ -1,6 +1,7 @@
 ﻿/*
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using QuicMoc.Generators;
 
 namespace QuicMoc.Tests.Unit;
 
@@ -21,7 +22,7 @@ public sealed class Tests
     public interface IFoo
     {
         string Greeting { get; }
-        string Greet<T>(string name, string? lastName = null, out string prefix);
+        string Greet<T>(T person, string? lastName = null, out string prefix);
     }
 }
 ";
@@ -30,7 +31,7 @@ public sealed class Tests
     public async Task Target_ShouldOutcome_WhenScenario()
     {
         // Arrange.
-        var generator = new SourceGenerator();
+        var generator = new MocksGenerator();
         var driver = CSharpGeneratorDriver.Create(generator);
 
         // We need to create a compilation with the required source code.

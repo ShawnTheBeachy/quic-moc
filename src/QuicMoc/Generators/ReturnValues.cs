@@ -1,99 +1,136 @@
-using System.Collections.Generic;
+using System.CodeDom.Compiler;
 using System.Linq;
-using Microsoft.CodeAnalysis;
+using QuicMoc.Internals;
 using QuicMoc.Models;
 
 namespace QuicMoc.Generators;
 
 internal static class ReturnValues
 {
-    public static string MockReturnValues(
-        IMethodSymbol method,
-        string methodName,
-        IReadOnlyList<Parameter> parameters,
-        IReadOnlyList<Parameter> inParameters
-    ) =>
-        $$"""
-        internal sealed class ReturnValues
-        {
-             private int _calls;
-             private readonly Matcher _matcher;
-             private readonly {{methodName}}MethodMock _methodMock;
-             public List<ReturnValue> Items { get; } = [];
-             public Range? OnCallsRange { get; private set; }
+    private static void GenerateOutSetters(this Method method, IndentedTextWriter textWriter)
+    {
+        foreach (var param in method.Parameters)
+            if (param.IsOut)
+                textWriter.WriteLine($"{param.Name} = default!;");
+    }
 
-             public ReturnValues(Matcher matcher, {{methodName}}MethodMock methodMock)
-             {
-                 _matcher = matcher;
-                 _methodMock = methodMock;
-                 methodMock._returnValues.Add(this);
-             }
+    public static void GenerateReturnValues(this Method method, IndentedTextWriter textWriter)
+    {
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("internal sealed class ReturnValues");
+        textWriter.StartBlock();
+        textWriter.WriteLine("private int _calls;");
+        textWriter.WriteLine("private readonly Matcher _matcher;");
+        textWriter.WriteLine($"private readonly {method.MockName} _methodMock;");
+        textWriter.WriteLine("public int Calls => _methodMock.Calls(_matcher);");
+        textWriter.WriteLine("public List<ReturnValue> Items { get; } = [];");
+        textWriter.WriteLine("public Range? OnCallsRange { get; private set; }");
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine($"public ReturnValues(Matcher matcher, {method.MockName} methodMock)");
+        textWriter.StartBlock();
+        textWriter.WriteLine("_matcher = matcher;");
+        textWriter.WriteLine("_methodMock = methodMock;");
+        textWriter.WriteLine("methodMock._returnValues.Add(this);");
+        textWriter.EndBlock();
+        textWriter.WriteLineNoTabs("");
 
-             public int Calls => _methodMock.Calls(_matcher);
+        var matchesArgs = method.Parameters.Where(x => !x.IsOut).ToArray();
+        textWriter.WriteLine(
+            $"public bool Matches{method.TypeParameters.Generics()}({matchesArgs.Select(x => x.ToString()).Join(", ")})"
+        );
+        textWriter.WriteLineIndented(
+            $"=> _matcher({matchesArgs.Select(x => x.Name).Concat(method.TypeParameters.Select(x => $"typeof({x})")).Join(", ")});"
+        );
+        textWriter.WriteLineNoTabs("");
 
-             public bool {{"Matches".MakeGeneric(method.TypeParameters)}}({{inParameters.Parameters(method, true, false, false)}}) => _matcher({{inParameters.Args(method)}});
+        textWriter.WriteLine("public void OnCalls(Range range) => OnCallsRange = range;");
+        textWriter.WriteLineNoTabs("");
 
-             public void OnCalls(Range range) => OnCallsRange = range;
+        textWriter.WriteLine(
+            $"public {method.ReturnType} Value{method.TypeParameters.Generics()}({method.Parameters.Select(x => x.ToString()).Join(", ")})"
+        );
+        textWriter.StartBlock();
+        textWriter.WriteLine("var index = 0;");
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("for (var i = 0; i < Items.Count; i++)");
+        textWriter.StartBlock();
+        textWriter.WriteLine("if (i > _calls)");
+        textWriter.WriteLineIndented("break;");
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("index = i;");
+        textWriter.EndBlock();
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("_calls++;");
 
-             public {{method.ReturnType()}} {{"Value".MakeGeneric(method.TypeParameters)}}({{parameters.Parameters(method, true, false, false)}})
-             {
-                var index = 0;
+        textWriter.WriteLine(
+            $"{(method.ReturnsVoid ? "" : $"return {(method.ReturnTypeIsGeneric ? $"({method.ReturnType})" : "")}")}Items[index].Value({method.Parameters.Select(x => $"{x.Ref()}{x.Name}").Join(", ")});"
+        );
 
-                for (var i = 0; i < Items.Count; i++)
-                {
-                   if (i > _calls)
-                       break;
+        textWriter.EndBlock();
+        textWriter.EndBlock();
+        textWriter.WriteLineNoTabs("");
+        method.GenerateReturnValuesBuilder(textWriter);
+    }
 
-                   index = i;
-                }
+    private static void GenerateReturnValuesBuilder(
+        this Method method,
+        IndentedTextWriter textWriter
+    )
+    {
+        textWriter.WriteLine(
+            $"public sealed class ReturnValuesBuilder{method.TypeParameters.Generics()}"
+        );
+        textWriter.StartBlock();
+        textWriter.WriteLine("private readonly ReturnValues _returnValues;");
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("internal ReturnValuesBuilder(ReturnValues returnValues)");
+        textWriter.StartBlock();
+        textWriter.WriteLine("_returnValues = returnValues;");
+        textWriter.EndBlock();
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("public int Calls => _returnValues.Calls;");
+        textWriter.WriteLineNoTabs("");
 
-                _calls++;
-                {{(method.ReturnsVoid ? "" : $"return {(method.ReturnType.IsGeneric(method) ? $"({method.ReturnType})" : "")}")}}
-                    Items[index].Value({{string.Join(", ", parameters.Select(x => $"{x.Ref()} {x.Name}"))}});
-             }
-        }
-        
-        public sealed class {{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}}
-        {
-            private readonly ReturnValues _returnValues;
-            
-            internal ReturnValuesBuilder(ReturnValues returnValues)
-            {
-                _returnValues = returnValues;
-            }
-        
-            public int Calls => _returnValues.Calls;
-        
-            public void OnCalls(Range range) => _returnValues.OnCalls(range);
-        
-            public {{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} Returns(params {{(method.ReturnsVoid ? "Action" : method.ReturnType())}}[] returnValues)
-            {
-                foreach (var returnValue in returnValues)
-                {
-                   var rv = new ReturnValue(({{parameters.Parameters(method, replaceGenericsWithObject: true, includeTypeParams: false)}}) =>
-                   {
-                        {{string.Join("\n",
-                                parameters.Where(x => x.IsOut).Select(x => $"{x.Name} = default!;")
-                            )}}
-                        {{(method.ReturnsVoid ? "returnValue()" : "return returnValue")}};
-                   });
-                   _returnValues.Items.Add(rv);
-                }
-                
-                return this;
-            }
-        
-            public {{"ReturnValuesBuilder".MakeGeneric(method.TypeParameters)}} Returns(params {{"Signature".MakeGeneric(method.TypeParameters)}}[] returnValues)
-            {
-                foreach (var returnValue in returnValues)
-                {
-                    var rv = new ReturnValue(({{parameters.Args(method, includeTypes: true, includeTypeParams: false, replaceGenericsWithObject: true)}}) =>
-                       returnValue({{parameters.ArgsWithGenericCasts(method)}}));
-                    _returnValues.Items.Add(rv);
-                }
-        
-                return this;
-            }
-        }
-        """;
+        textWriter.WriteLine("public void OnCalls(Range range) => _returnValues.OnCalls(range);");
+        textWriter.WriteLineNoTabs("");
+
+        textWriter.WriteLine(
+            $"public ReturnValuesBuilder{method.TypeParameters.Generics()} Returns(params {(method.ReturnsVoid ? "Action" : method.ReturnType)}[] returnValues)"
+        );
+        textWriter.StartBlock();
+        textWriter.WriteLine("foreach (var returnValue in returnValues)");
+        textWriter.StartBlock();
+        textWriter.WriteLine(
+            $"var rv = new ReturnValue(({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object" : x.Type)).Join(", ")}) =>"
+        );
+        textWriter.StartBlock();
+        method.GenerateOutSetters(textWriter);
+        textWriter.WriteLine($"{(method.ReturnsVoid ? "returnValue()" : "return returnValue")};");
+        textWriter.EndBlock(");");
+        textWriter.WriteLine("_returnValues.Items.Add(rv);");
+        textWriter.EndBlock();
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("return this;");
+        textWriter.EndBlock();
+        textWriter.WriteLineNoTabs("");
+
+        textWriter.WriteLine(
+            $"public ReturnValuesBuilder{method.TypeParameters.Generics()} Returns(params Signature{method.TypeParameters.Generics()}[] returnValues)"
+        );
+        textWriter.StartBlock();
+        textWriter.WriteLine("foreach (var returnValue in returnValues)");
+        textWriter.StartBlock();
+        textWriter.WriteLine(
+            $"var rv = new ReturnValue(({method.Parameters.Select(x => x.ToString(x.IsGeneric ? "object?" : x.Type)).Join(", ")})"
+        );
+        textWriter.WriteLineIndented(
+            $"=> returnValue({method.Parameters.Select(x => $"{x.Ref()}{(x.IsGeneric ? $"({x.Type}?)" : "")}{x.Name}").Join(", ")}));"
+        );
+        textWriter.WriteLine("_returnValues.Items.Add(rv);");
+        textWriter.EndBlock();
+        textWriter.WriteLineNoTabs("");
+        textWriter.WriteLine("return this;");
+        textWriter.EndBlock();
+        textWriter.EndBlock();
+    }
 }

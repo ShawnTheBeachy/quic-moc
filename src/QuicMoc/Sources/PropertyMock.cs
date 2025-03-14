@@ -35,7 +35,7 @@ internal static class PropertyMock
                     }
 
                     public override int GetHashCode() => _value.GetHashCode();
-                    
+
                     public override string ToString() => _value.ToString();
 
                     public static implicit operator T({{ClassName}}<T> mock) => mock._value;
@@ -49,35 +49,4 @@ internal static class PropertyMock
         );
         return context;
     }
-
-    public static string MockProperties(this MockGenerationTarget target)
-    {
-        var props = new string[target.Properties.Count];
-
-        for (var i = 0; i < target.Properties.Count; i++)
-        {
-            var prop = target.Properties[i];
-            var source = $$"""
-                #region {{prop.Name}}
-                {{prop.Type.Name}} {{target.FullTypeName}}.{{prop.Name}} {{(
-                    prop.IsReadOnly ? MockReadOnlyProperty(prop) : MockProperty(prop)
-                )}}
-                public {{ClassName}}<{{prop.Type.Name}}> {{prop.Name}} { get; set; } = new();
-                #endregion {{prop.Name}}
-                """;
-            props[i] = source;
-        }
-
-        return string.Join("\n\n", props);
-    }
-
-    private static string MockProperty(IPropertySymbol property) =>
-        $$"""
-            {
-                get => {{property.Name}};
-                set => {{property.Name}} = value;
-            }
-            """;
-
-    private static string MockReadOnlyProperty(IPropertySymbol property) => $" => {property.Name};";
 }

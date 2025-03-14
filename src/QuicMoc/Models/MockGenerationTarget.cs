@@ -1,33 +1,45 @@
-﻿using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using QuicMoc.Internals;
 
 namespace QuicMoc.Models;
 
 internal sealed class MockGenerationTarget
 {
-    public string FullTypeName => $"{Type.ContainingNamespace}.{Type.Name}";
-    public IReadOnlyList<IMethodSymbol> Methods { get; }
-    public IReadOnlyList<IPropertySymbol> Properties { get; }
-    public ITypeSymbol Type { get; }
+    public EquatableArray<Method> Methods { get; }
+    public string Name { get; }
+    public EquatableArray<Property> Properties { get; }
+    public string Type { get; }
 
-    public MockGenerationTarget(GeneratorSyntaxContext context)
+    private MockGenerationTarget(ITypeSymbol type)
     {
-        if (context.Node is not GenericNameSyntax gns)
-            throw new Exception(
-                $"Expected a {nameof(GenericNameSyntax)} node but instead received {context.Node.Kind()}."
-            );
-
-        var proxyType = gns.TypeArgumentList.Arguments[0];
-        Type = context.SemanticModel.GetTypeInfo(proxyType).Type!;
-        var members = Type.GetMembers();
-        Properties = members.OfType<IPropertySymbol>().ToArray();
+        Name = type.Name;
+        Type = type.ToDisplayString();
+        var members = type.GetMembers();
+        Properties = members
+            .OfType<IPropertySymbol>()
+            .Select(symbol => new Property(symbol))
+            .ToImmutableArray();
         Methods = members
             .OfType<IMethodSymbol>()
             .Where(x => !x.Name.StartsWith("get_") && !x.Name.StartsWith("set_"))
-            .ToArray();
+            .Select((x, i) => new Method(x, i))
+            .ToImmutableArray();
+    }
+
+    public static MockGenerationTarget? TryCreate(GeneratorSyntaxContext context)
+    {
+        if (context.Node is not GenericNameSyntax gns)
+            return null;
+
+        var proxyType = context.SemanticModel.GetTypeInfo(gns.TypeArgumentList.Arguments[0]).Type;
+
+        if (proxyType is null)
+            return null;
+
+        return proxyType.IsAbstract ? new MockGenerationTarget(proxyType) : null;
     }
 }
