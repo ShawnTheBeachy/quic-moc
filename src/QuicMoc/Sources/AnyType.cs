@@ -19,7 +19,7 @@ internal static class AnyType
 
                 namespace {Constants.Namespace};
 
-                public readonly record struct AnyType;
+                internal readonly record struct AnyType;
                 
                 """,
                 Encoding.UTF8

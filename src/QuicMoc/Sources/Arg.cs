@@ -19,7 +19,7 @@ internal static class Arg
 
                 namespace {{Constants.Namespace}};
 
-                public readonly record struct Arg<T>
+                internal readonly record struct Arg<T>
                 {
                     private readonly Func<T, bool>? _match;
 
